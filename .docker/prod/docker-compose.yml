@@ -1,0 +1,24 @@
+version: '3.5'
+
+services:
+  io_kiyar_bitter:
+    image: io_kiyar_bitter
+    container_name: io_kiyar_bitter
+    restart: always
+    build: .
+    ports:
+      - '3010:80'
+    networks:
+      - nginxproxy_network
+    volumes:
+      - nginxproxy_volume:/proxy_confs
+
+networks:
+  nginxproxy_network:
+    external:
+      name: nginxproxy_network
+
+volumes:
+  nginxproxy_volume:
+    external:
+      name: nginxproxy_volume
