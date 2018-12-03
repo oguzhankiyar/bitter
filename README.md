@@ -9,6 +9,8 @@ Basically, there is an api named "OK.Bitter.Api". The api has bot commands to ma
 First hosted service SymbolHostedService runs every 30 minutes and updates symbols in database to get new symbols immediately.
 Second hosted service SocketHostedService listens Binance Websockets and decide notify or call user or do nothing.
 
+*NOTE: The project will be restructured using microservice architecture. Development will be in [restructured-microservice](https://github.com/oguzhankiyar/OK.Bitter/tree/restructured-microservice) branch and '[Restructure with Microservice Architecture](https://github.com/oguzhankiyar/OK.Bitter/issues/1)' issue.*
+
 ## The Scenario
 
 1. Api starts, bot webhook is up and hosted services are running in background.
