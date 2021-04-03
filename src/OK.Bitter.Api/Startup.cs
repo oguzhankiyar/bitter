@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OK.Bitter.Api.Config;
-using OK.Bitter.Api.HostedServices;
 using OK.Bitter.DataAccess;
 using OK.Bitter.Engine;
 using OK.Bitter.Services;
@@ -39,11 +38,6 @@ namespace OK.Bitter.Api
             {
                 opt.BotToken = _bitterConfig.Telegram.BotToken;
             });
-
-            services.AddSingleton<ISocketHostedService, SocketHostedService>();
-
-            services.AddHostedService<ConsumeSocketHostedService>();
-            services.AddHostedService<SymbolHostedService>();
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)

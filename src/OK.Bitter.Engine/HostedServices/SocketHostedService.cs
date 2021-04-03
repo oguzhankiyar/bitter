@@ -1,17 +1,12 @@
-﻿using OK.Bitter.Core.Managers;
-using System;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using OK.Bitter.Core.Managers;
 
 namespace OK.Bitter.Api.HostedServices
 {
-    public interface ISocketHostedService
-    {
-        Task StartAsync();
-
-        Task StopAsync();
-    }
-
-    public class SocketHostedService : ISocketHostedService
+    public class SocketHostedService : IHostedService
     {
         private readonly ISocketServiceManager _socketServiceManager;
 
@@ -20,7 +15,7 @@ namespace OK.Bitter.Api.HostedServices
             _socketServiceManager = socketServiceManager;
         }
 
-        public async Task StartAsync()
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -41,7 +36,7 @@ namespace OK.Bitter.Api.HostedServices
             }
         }
 
-        public async Task StopAsync()
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             try
             {

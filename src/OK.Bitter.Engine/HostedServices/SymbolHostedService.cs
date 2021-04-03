@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Hosting;
-using OK.Bitter.Core.Managers;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using OK.Bitter.Core.Managers;
 
 namespace OK.Bitter.Api.HostedServices
 {
