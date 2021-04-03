@@ -1,12 +1,12 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
 using OK.Bitter.Common.Entities;
 using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
 using OK.Bitter.Core.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 
 namespace OK.Bitter.Engine.Managers
 {
@@ -88,9 +88,10 @@ namespace OK.Bitter.Engine.Managers
 
             string result = new HttpClient().GetAsync(url).Result.Content.ReadAsStringAsync().Result;
 
-            var json = JObject.Parse(result);
+            var json = JsonDocument.Parse(result);
+            var root = json.RootElement;
 
-            return decimal.Parse(json["price"].ToString());
+            return decimal.Parse(root.GetProperty("price").GetString());
         }
     }
 }

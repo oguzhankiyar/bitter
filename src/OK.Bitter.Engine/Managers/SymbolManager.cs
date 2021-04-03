@@ -1,11 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
 using OK.Bitter.Common.Entities;
 using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
 using OK.Bitter.Core.Repositories;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 
 namespace OK.Bitter.Engine.Managers
 {
@@ -79,18 +79,19 @@ namespace OK.Bitter.Engine.Managers
 
             string result = new HttpClient().GetAsync(url).Result.Content.ReadAsStringAsync().Result;
 
-            var json = JObject.Parse(result);
+            var json = JsonDocument.Parse(result);
+            var root = json.RootElement;
 
-            var array = json["symbols"] as JArray;
+            var array = root.GetProperty("symbols").EnumerateArray();
 
             foreach (var item in array)
             {
-                if (item["quoteAsset"].ToString() != "BTC")
+                if (item.GetProperty("quoteAsset").GetString() != "BTC")
                 {
                     continue;
                 }
 
-                symbols.Add(item["baseAsset"].ToString() + "|" + item["quoteAsset"].ToString());
+                symbols.Add(item.GetProperty("baseAsset").GetString() + "|" + item.GetProperty("quoteAsset").GetString());
             }
 
             return symbols;
