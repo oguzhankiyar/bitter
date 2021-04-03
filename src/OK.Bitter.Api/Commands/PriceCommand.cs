@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using OK.Bitter.Common.Entities;
 using OK.Bitter.Core.Repositories;
+using OK.Bitter.Engine.Extensions;
 using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
@@ -83,7 +84,7 @@ namespace OK.Bitter.Api.Commands
             {
                 var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
-                lines.Add($"{item.Date.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Price} {string.Format("[{0}%{1}]", (item.Change * 100).ToString("+0.00;-0.00;0"), GetTimeSpanString(DateTime.Now - item.LastChangeDate))}");
+                lines.Add($"{item.Date.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Price} {string.Format("[{0}%{1}]", (item.Change * 100).ToString("+0.00;-0.00;0"), (DateTime.Now - item.LastChangeDate).ToIntervalString())}");
             }
 
             if (!lines.Any())
@@ -96,32 +97,6 @@ namespace OK.Bitter.Api.Commands
             lines = lines.OrderBy(x => x).ToList();
 
             await ReplyAsync(string.Join("\r\n", lines));
-        }
-
-        private static string GetTimeSpanString(TimeSpan span)
-        {
-            if (span.Days > 0)
-            {
-                return " in " + span.Days + " day(s)";
-            }
-            else if (span.Hours > 0)
-            {
-                return " in " + span.Hours + " hour(s)";
-            }
-            else if (span.Minutes > 0)
-            {
-                return " in " + span.Minutes + " minute(s)";
-            }
-            else if (span.Seconds > 0)
-            {
-                return " in " + span.Seconds + " second(s)";
-            }
-            else if (span.Milliseconds > 0)
-            {
-                return " in " + span.Milliseconds + " millisecond(s)";
-            }
-
-            return string.Empty;
         }
     }
 }

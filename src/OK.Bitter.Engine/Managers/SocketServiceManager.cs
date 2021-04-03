@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
+using OK.Bitter.Engine.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -197,11 +198,11 @@ namespace OK.Bitter.Engine.Managers
                     {
                         var user = Users.FirstOrDefault(x => x.Id == symbolSubscription.UserId);
 
-                        string message = string.Format("{0}: {1} [{2}%{3}]",
+                        string message = string.Format("{0}: {1} [{2}% {3}]",
                             symbol.FriendlyName,
                             currentPrice,
                             (userChange * 100).ToString("+0.00;-0.00;0"),
-                            GetTimeSpanString(DateTime.Now - symbolSubscription.LastNotifiedDate));
+                            (DateTime.Now - symbolSubscription.LastNotifiedDate).ToIntervalString());
 
                         _userManager.SendMessage(user.Id, message);
 
@@ -214,32 +215,6 @@ namespace OK.Bitter.Engine.Managers
                     }
                 }
             }
-        }
-
-        private string GetTimeSpanString(TimeSpan span)
-        {
-            if (span.Days > 0)
-            {
-                return " in " + span.Days + " day(s)";
-            }
-            else if (span.Hours > 0)
-            {
-                return " in " + span.Hours + " hour(s)";
-            }
-            else if (span.Minutes > 0)
-            {
-                return " in " + span.Minutes + " minute(s)";
-            }
-            else if (span.Seconds > 0)
-            {
-                return " in " + span.Seconds + " second(s)";
-            }
-            else if (span.Milliseconds > 0)
-            {
-                return " in " + span.Milliseconds + " millisecond(s)";
-            }
-
-            return string.Empty;
         }
 
         public void SubscribeAll()
