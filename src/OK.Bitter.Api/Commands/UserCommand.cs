@@ -1,84 +1,57 @@
-﻿using OK.Bitter.Api.Inputs;
-using OK.Bitter.Common.Entities;
+﻿using System;
+using System.Threading.Tasks;
 using OK.Bitter.Common.Enumerations;
 using OK.Bitter.Core.Repositories;
-using OK.Bitter.Core.Services;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
 {
-    public class UserCommand : IBotCommand
+    [Command("users")]
+    public class UserCommand : BaseCommand
     {
         private readonly IUserRepository _userRepository;
-        private readonly IMessageService _messageService;
 
-        public UserCommand(IUserRepository userRepository,
-                           IMessageService messageService)
+        public UserCommand(
+            IUserRepository userRepository,
+            IServiceProvider serviceProvider) : base(serviceProvider)
         {
-            _userRepository = userRepository;
-            _messageService = messageService;
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         }
 
-        public async Task ExecuteAsync(BotUpdateInput input)
+        [CommandCase("get", "{name}")]
+        public async Task GetAsync(string name)
         {
-            string message = input.Message.Text.Trim();
-
-            message = message.Replace((message + " ").Split(' ')[0], string.Empty).Trim();
-
-            List<string> values = message.Contains(" ") ? message.Split(' ').ToList() : new List<string>() { message };
-
-            UserEntity user = _userRepository.FindUser(input.Message.Chat.Id.ToString());
-
-            if (user == null || user.Type != UserTypeEnum.Admin)
+            if (User == null || User.Type != UserTypeEnum.Admin)
             {
-                await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Unauthorized!");
+                await ReplyAsync("Unauthorized!");
 
                 return;
             }
 
-            if (values[0] == "get")
+            if (name == "all")
             {
-                if (values.Count == 1)
+                string result = string.Empty;
+
+                var users = _userRepository.FindUsers();
+
+                foreach (var item in users)
                 {
-                    await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
+                    result += $"@{item.Username} - {item.FirstName} {item.LastName}\r\n";
+                }
+
+                await ReplyAsync(result);
+            }
+            else
+            {
+                var userEntity = _userRepository.FindUser(name);
+                if (userEntity == null)
+                {
+                    await ReplyAsync("User is not found!");
 
                     return;
                 }
 
-                if (values[1] == "all")
-                {
-                    string result = string.Empty;
-
-                    var users = _userRepository.FindUsers();
-
-                    foreach (var item in users)
-                    {
-                        result += $"@{item.Username} - {item.FirstName} {item.LastName}\r\n";
-                    }
-
-                    await _messageService.SendMessageAsync(user.ChatId, result);
-                }
-                else
-                {
-                    var usr = _userRepository.FindUser(values[1]);
-
-                    if (usr == null)
-                    {
-                        await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "User is not found!");
-
-                        return;
-                    }
-
-                    await _messageService.SendMessageAsync(user.ChatId, $"@{usr.Username} - {usr.FirstName} {usr.LastName}");
-                }
-            }
-            else
-            {
-                await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
-
-                return;
+                await ReplyAsync($"@{userEntity.Username} - {userEntity.FirstName} {userEntity.LastName}");
             }
         }
     }

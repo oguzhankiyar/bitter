@@ -1,14 +1,12 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OK.Bitter.Api.Commands;
 using OK.Bitter.Api.HostedServices;
-using OK.Bitter.Engine.Managers;
 using OK.Bitter.DataAccess;
 using OK.Bitter.Engine;
 using OK.Bitter.Services;
+using OK.GramHook;
 
 namespace OK.Bitter.Api
 {
@@ -29,23 +27,12 @@ namespace OK.Bitter.Api
 
             services.AddEngineLayer();
 
+            services.AddGramHook(opt =>
+            {
+                opt.BotToken = _configuration.GetSection("ServiceConfigurations:TelegramService")["BotToken"];
+            });
+
             services.AddSingleton<ISocketHostedService, SocketHostedService>();
-
-
-            services.AddTransient<AlertCommand>();
-            services.AddTransient<AuthCommand>();
-            services.AddTransient<HelpCommand>();
-            services.AddTransient<MessageCommand>();
-            services.AddTransient<PriceCommand>();
-            services.AddTransient<ResetCommand>();
-            services.AddTransient<SettingCommand>();
-            services.AddTransient<StartCommand>();
-            services.AddTransient<StatusCommand>();
-            services.AddTransient<SubscriptionCommand>();
-            services.AddTransient<UserCommand>();
-
-            services.AddMvc()
-                    .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             services.AddHostedService<ConsumeSocketHostedService>();
             services.AddHostedService<SymbolHostedService>();
@@ -63,7 +50,8 @@ namespace OK.Bitter.Api
             }
 
             app.UseHttpsRedirection();
-            app.UseMvc();
+
+            app.UseGramHook("/api/v1/hooks");
         }
     }
 }

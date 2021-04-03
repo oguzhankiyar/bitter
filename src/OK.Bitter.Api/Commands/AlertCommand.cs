@@ -1,268 +1,233 @@
-﻿using OK.Bitter.Api.Inputs;
-using OK.Bitter.Common.Entities;
-using OK.Bitter.Core.Managers;
-using OK.Bitter.Core.Repositories;
-using OK.Bitter.Core.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using OK.Bitter.Common.Entities;
+using OK.Bitter.Core.Managers;
+using OK.Bitter.Core.Repositories;
+using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
 {
-    public class AlertCommand : IBotCommand
+    [Command("alerts")]
+    public class AlertCommand : BaseCommand
     {
-        private readonly IUserRepository _userRepository;
         private readonly IAlertRepository _alertRepository;
         private readonly ISymbolRepository _symbolRepository;
-        private readonly IMessageService _messageService;
         private readonly ISocketServiceManager _socketServiceManager;
 
-        public AlertCommand(IUserRepository userRepository,
-                            IAlertRepository alertRepository,
-                            ISymbolRepository symbolRepository,
-                            IMessageService messageService,
-                            ISocketServiceManager socketServiceManager)
+        public AlertCommand(
+            IAlertRepository alertRepository,
+            ISymbolRepository symbolRepository,
+            ISocketServiceManager socketServiceManager,
+            IServiceProvider serviceProvider) : base(serviceProvider)
         {
-            _userRepository = userRepository;
-            _alertRepository = alertRepository;
-            _symbolRepository = symbolRepository;
-            _messageService = messageService;
-            _socketServiceManager = socketServiceManager;
+            _alertRepository = alertRepository ?? throw new ArgumentNullException(nameof(alertRepository));
+            _symbolRepository = symbolRepository ?? throw new ArgumentNullException(nameof(symbolRepository));
+            _socketServiceManager = socketServiceManager ?? throw new ArgumentNullException(nameof(socketServiceManager));
         }
 
-        public async Task ExecuteAsync(BotUpdateInput input)
+        public override async Task OnPreExecutionAsync()
         {
-            string message = input.Message.Text.Trim();
+            await base.OnPreExecutionAsync();
 
-            message = message.Replace((message + " ").Split(' ')[0], string.Empty).Trim();
-
-            List<string> values = message.Contains(" ") ? message.Split(' ').ToList() : new List<string>() { message };
-
-            UserEntity user = _userRepository.FindUser(input.Message.Chat.Id.ToString());
-
-            if (user == null)
+            if (User == null)
             {
-                await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Unauthorized!");
+                await ReplyAsync("Unauthorized!");
+
+                await AbortAsync();
+            }
+        }
+
+        [CommandCase("get", "{symbol}")]
+        public async Task GetAsync(string symbol)
+        {
+            if (symbol == "all")
+            {
+                var alerts = _alertRepository.FindAlerts(User.Id);
+
+                var lines = new List<string>();
+
+                foreach (var item in alerts)
+                {
+                    var sym = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Id == item.SymbolId);
+
+                    var line = $"{sym.FriendlyName} when";
+
+                    if (item.LessValue.HasValue)
+                    {
+                        line += $" less than {item.LessValue.Value}";
+                    }
+
+                    if (item.GreaterValue.HasValue)
+                    {
+                        line += $" greater than {item.GreaterValue.Value}";
+                    }
+
+                    lines.Add(line);
+                }
+
+                if (!lines.Any())
+                {
+                    await ReplyAsync("There are no alerts!");
+
+                    return;
+                }
+
+                lines = lines.OrderBy(x => x).ToList();
+
+                await ReplyAsync(string.Join("\r\n", lines));
 
                 return;
-            }
-
-            // "/alerts get <all|symbol>"
-            if (values[0] == "get")
-            {
-                if (values.Count == 1)
-                {
-                    await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
-
-                    return;
-                }
-
-                if (values[1] == "all")
-                {
-                    var alerts = _alertRepository.FindAlerts(user.Id);
-
-                    List<string> lines = new List<string>();
-
-                    foreach (var item in alerts)
-                    {
-                        var sym = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Id == item.SymbolId);
-
-                        string line = $"{sym.FriendlyName} when";
-
-                        if (item.LessValue.HasValue)
-                        {
-                            line += $" less than {item.LessValue.Value}";
-                        }
-
-                        if (item.GreaterValue.HasValue)
-                        {
-                            line += $" greater than {item.GreaterValue.Value}";
-                        }
-
-                        lines.Add(line);
-                    }
-
-                    if (!lines.Any())
-                    {
-                        await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "There are no alerts!");
-
-                        return;
-                    }
-
-                    lines = lines.OrderBy(x => x).ToList();
-
-                    await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), string.Join("\r\n", lines));
-
-                    return;
-                }
-                else
-                {
-                    var symbol = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == values[1].ToUpperInvariant() || x.FriendlyName == values[1].ToUpperInvariant());
-
-                    if (symbol == null)
-                    {
-                        await _messageService.SendMessageAsync(user.ChatId, "Symbol is not found!");
-
-                        return;
-                    }
-
-                    var alert = _alertRepository.FindAlert(user.Id, symbol.Id);
-
-                    if (alert == null)
-                    {
-                        await _messageService.SendMessageAsync(user.ChatId, "Alert is not found!");
-
-                        return;
-                    }
-
-                    string result = $"{symbol.FriendlyName} when";
-
-                    if (alert.LessValue.HasValue)
-                    {
-                        result += $" less than {alert.LessValue.Value}";
-                    }
-
-                    if (alert.GreaterValue.HasValue)
-                    {
-                        result += $" greater than {alert.GreaterValue.Value}";
-                    }
-
-                    await _messageService.SendMessageAsync(user.ChatId, result);
-                }
-            }
-            // "/alerts set <symbol> <less|greater> <value>"
-            else if (values[0] == "set")
-            {
-                if (values.Count < 4)
-                {
-                    await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
-
-                    return;
-                }
-
-                var symbol = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == values[1].ToUpperInvariant() || x.FriendlyName == values[1].ToUpperInvariant());
-
-                if (symbol == null)
-                {
-                    await _messageService.SendMessageAsync(user.ChatId, "Symbol is not found!");
-
-                    return;
-                }
-
-                var alert = _alertRepository.FindAlert(user.Id, symbol.Id);
-
-                if (values[2] == "less")
-                {
-                    decimal lessValue = Convert.ToDecimal(values[3]);
-
-                    if (alert == null)
-                    {
-                        _alertRepository.InsertAlert(new AlertEntity()
-                        {
-                            UserId = user.Id,
-                            SymbolId = symbol.Id,
-                            LessValue = lessValue
-                        });
-                    }
-                    else
-                    {
-                        alert.LessValue = lessValue;
-
-                        _alertRepository.UpdateAlert(alert);
-                    }
-
-                    _socketServiceManager.UpdateAlert(user.Id);
-
-                    await _messageService.SendMessageAsync(user.ChatId, "Success!");
-
-                }
-                else if (values[2] == "greater")
-                {
-                    decimal greaterValue = Convert.ToDecimal(values[3]);
-
-                    if (alert == null)
-                    {
-                        _alertRepository.InsertAlert(new AlertEntity()
-                        {
-                            UserId = user.Id,
-                            SymbolId = symbol.Id,
-                            GreaterValue = greaterValue
-                        });
-                    }
-                    else
-                    {
-                        alert.GreaterValue = greaterValue;
-
-                        _alertRepository.UpdateAlert(alert);
-                    }
-
-                    _socketServiceManager.UpdateAlert(user.Id);
-
-                    await _messageService.SendMessageAsync(user.ChatId, "Success!");
-                }
-                else
-                {
-                    await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
-
-                    return;
-                }
-            }
-            // "/alerts del <all|symbol>"
-            else if (values[0] == "del")
-            {
-                if (values.Count == 1)
-                {
-                    await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
-
-                    return;
-                }
-
-                if (values[1] == "all")
-                {
-                    var alerts = _alertRepository.FindAlerts(user.Id);
-
-                    foreach (var alert in alerts)
-                    {
-                        _alertRepository.RemoveAlert(alert.Id);
-                    }
-
-                    _socketServiceManager.UpdateAlert(user.Id);
-
-                    await _messageService.SendMessageAsync(user.ChatId, "Success!");
-                }
-                else
-                {
-                    var symbol = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == values[1].ToUpperInvariant() || x.FriendlyName == values[1].ToUpperInvariant());
-
-                    if (symbol == null)
-                    {
-                        await _messageService.SendMessageAsync(user.ChatId, "Symbol is not found!");
-
-                        return;
-                    }
-
-                    var alert = _alertRepository.FindAlert(user.Id, symbol.Id);
-
-                    if (alert == null)
-                    {
-                        await _messageService.SendMessageAsync(user.ChatId, "Alert is not found!");
-                    }
-                    else
-                    {
-                        _alertRepository.RemoveAlert(alert.Id);
-
-                        _socketServiceManager.UpdateAlert(user.Id);
-
-                        await _messageService.SendMessageAsync(user.ChatId, "Success!");
-                    }
-                }
             }
             else
             {
-                await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
+                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                if (symbolEntity == null)
+                {
+                    await ReplyAsync("Symbol is not found!");
+
+                    return;
+                }
+
+                var alert = _alertRepository.FindAlert(User.Id, symbolEntity.Id);
+                if (alert == null)
+                {
+                    await ReplyAsync("Alert is not found!");
+
+                    return;
+                }
+
+                var result = $"{symbolEntity.FriendlyName} when";
+
+                if (alert.LessValue.HasValue)
+                {
+                    result += $" less than {alert.LessValue.Value}";
+                }
+
+                if (alert.GreaterValue.HasValue)
+                {
+                    result += $" greater than {alert.GreaterValue.Value}";
+                }
+
+                await ReplyAsync(result);
+            }
+        }
+
+        [CommandCase("set", "{symbol}", "{condition}", "{treshold}")]
+        public async Task SetAsync(string symbol, string condition, string treshold)
+        {
+            var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+            if (symbolEntity == null)
+            {
+                await ReplyAsync("Symbol is not found!");
 
                 return;
+            }
+
+            if (!decimal.TryParse(treshold, out decimal tresholdValue))
+            {
+                await ReplyAsync("Invalid arguments!");
+
+                return;
+            }
+
+            var alert = _alertRepository.FindAlert(User.Id, symbolEntity.Id);
+
+            if (condition == "less")
+            {
+                if (alert == null)
+                {
+                    _alertRepository.InsertAlert(new AlertEntity()
+                    {
+                        UserId = User.Id,
+                        SymbolId = symbolEntity.Id,
+                        LessValue = tresholdValue
+                    });
+                }
+                else
+                {
+                    alert.LessValue = tresholdValue;
+
+                    _alertRepository.UpdateAlert(alert);
+                }
+
+                _socketServiceManager.UpdateAlert(User.Id);
+
+                await ReplyAsync("Success!");
+
+            }
+            else if (condition == "greater")
+            {
+                if (alert == null)
+                {
+                    _alertRepository.InsertAlert(new AlertEntity()
+                    {
+                        UserId = User.Id,
+                        SymbolId = symbolEntity.Id,
+                        GreaterValue = tresholdValue
+                    });
+                }
+                else
+                {
+                    alert.GreaterValue = tresholdValue;
+
+                    _alertRepository.UpdateAlert(alert);
+                }
+
+                _socketServiceManager.UpdateAlert(User.Id);
+
+                await ReplyAsync("Success!");
+            }
+            else
+            {
+                await ReplyAsync("Invalid arguments!");
+
+                return;
+            }
+        }
+
+        [CommandCase("del", "{symbol}")]
+        public async Task DelAsync(string symbol)
+        {
+            if (symbol == "all")
+            {
+                var alerts = _alertRepository.FindAlerts(User.Id);
+
+                foreach (var alert in alerts)
+                {
+                    _alertRepository.RemoveAlert(alert.Id);
+                }
+
+                _socketServiceManager.UpdateAlert(User.Id);
+
+                await ReplyAsync("Success!");
+            }
+            else
+            {
+                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+
+                if (symbolEntity == null)
+                {
+                    await ReplyAsync("Symbol is not found!");
+
+                    return;
+                }
+
+                var alert = _alertRepository.FindAlert(User.Id, symbolEntity.Id);
+
+                if (alert == null)
+                {
+                    await ReplyAsync("Alert is not found!");
+                }
+                else
+                {
+                    _alertRepository.RemoveAlert(alert.Id);
+
+                    _socketServiceManager.UpdateAlert(User.Id);
+
+                    await ReplyAsync("Success!");
+                }
             }
         }
     }

@@ -1,135 +1,101 @@
-﻿using OK.Bitter.Api.Inputs;
-using OK.Bitter.Common.Entities;
-using OK.Bitter.Core.Repositories;
-using OK.Bitter.Core.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using OK.Bitter.Common.Entities;
+using OK.Bitter.Core.Repositories;
+using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
 {
-    public class PriceCommand : IBotCommand
+    [Command("prices")]
+    public class PriceCommand : BaseCommand
     {
-        private readonly IUserRepository _userRepository;
         private readonly IPriceRepository _priceRepository;
         private readonly ISymbolRepository _symbolRepository;
-        private readonly IMessageService _messageService;
 
-        public PriceCommand(IUserRepository userRepository,
-                            IPriceRepository priceRepository,
-                            ISymbolRepository symbolRepository,
-                            IMessageService messageService)
+        public PriceCommand(
+            IPriceRepository priceRepository,
+            ISymbolRepository symbolRepository,
+            IServiceProvider serviceProvider) : base(serviceProvider)
         {
-            _userRepository = userRepository;
-            _priceRepository = priceRepository;
-            _symbolRepository = symbolRepository;
-            _messageService = messageService;
+            _priceRepository = priceRepository ?? throw new ArgumentNullException(nameof(priceRepository));
+            _symbolRepository = symbolRepository ?? throw new ArgumentNullException(nameof(symbolRepository));
         }
 
-        public async Task ExecuteAsync(BotUpdateInput input)
+        [CommandCase("get", "{symbol}", "{interval}")]
+        public async Task GetAsync(string symbol, string interval)
         {
-            string message = input.Message.Text.Trim();
-
-            message = message.Replace((message + " ").Split(' ')[0], string.Empty).Trim();
-
-            List<string> values = message.Contains(" ") ? message.Split(' ').ToList() : new List<string>() { message };
-
-            UserEntity user = _userRepository.FindUser(input.Message.Chat.Id.ToString());
-
-            if (user == null)
+            if (User == null)
             {
-                await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Unauthorized!");
+                await ReplyAsync("Unauthorized!");
 
                 return;
             }
 
-            if (values[0] == "get")
+            var startDate = DateTime.UtcNow;
+
+            if (interval.EndsWith("h"))
             {
-                if (values.Count < 3)
+                if (!int.TryParse(interval.Replace("h", string.Empty), out int intervalValue))
                 {
-                    await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
+                    await ReplyAsync("Invalid arguments!");
 
                     return;
                 }
 
-                DateTime startDate = DateTime.Now;
-
-                if (values[2].EndsWith("h"))
+                startDate = DateTime.UtcNow.AddHours(-1 * intervalValue);
+            }
+            else if (interval.EndsWith("m"))
+            {
+                if (!int.TryParse(interval.Replace("m", string.Empty), out int intervalValue))
                 {
-                    int interval;
-
-                    if (!int.TryParse(values[2].Replace("h", string.Empty), out interval))
-                    {
-                        await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
-
-                        return;
-                    }
-
-                    startDate = DateTime.Now.AddHours(-1 * interval);
-                }
-                else if (values[2].EndsWith("m"))
-                {
-                    int interval;
-
-                    if (!int.TryParse(values[2].Replace("m", string.Empty), out interval))
-                    {
-                        await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
-
-                        return;
-                    }
-
-                    startDate = DateTime.Now.AddMinutes(-1 * interval);
-                }
-
-                IEnumerable<PriceEntity> prices;
-
-                if (values[1] == "all")
-                {
-                    prices = _priceRepository.FindPrices(startDate).OrderBy(x => x.Date);
-                }
-                else
-                {
-                    var symbol = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == values[1].ToUpperInvariant() || x.FriendlyName == values[1].ToUpperInvariant());
-
-                    if (symbol == null)
-                    {
-                        await _messageService.SendMessageAsync(user.ChatId, "Symbol is not found!");
-
-                        return;
-                    }
-
-                    prices = _priceRepository.FindPrices(symbol.Id, startDate).OrderBy(x => x.Date);
-                }
-
-                List<string> lines = new List<string>();
-
-                foreach (var item in prices)
-                {
-                    var sym = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Id == item.SymbolId);
-
-                    lines.Add($"{item.Date.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Price} {string.Format("[{0}%{1}]", (item.Change * 100).ToString("+0.00;-0.00;0"), GetTimeSpanString(DateTime.Now - item.LastChangeDate))}");
-                }
-
-                if (!lines.Any())
-                {
-                    await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "There are no prices!");
+                    await ReplyAsync("Invalid arguments!");
 
                     return;
                 }
 
-                lines = lines.OrderBy(x => x).ToList();
+                startDate = DateTime.UtcNow.AddMinutes(-1 * intervalValue);
+            }
 
-                await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), string.Join("\r\n", lines));
+            var prices = Enumerable.Empty<PriceEntity>();
 
-                return;
+            if (symbol == "all")
+            {
+                prices = _priceRepository.FindPrices(startDate).OrderBy(x => x.Date);
             }
             else
             {
-                await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Invalid arguments!");
+                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                if (symbolEntity == null)
+                {
+                    await ReplyAsync("Symbol is not found!");
+
+                    return;
+                }
+
+                prices = _priceRepository.FindPrices(symbolEntity.Id, startDate).OrderBy(x => x.Date);
+            }
+
+            var lines = new List<string>();
+
+            foreach (var item in prices)
+            {
+                var sym = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Id == item.SymbolId);
+
+                lines.Add($"{item.Date.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Price} {string.Format("[{0}%{1}]", (item.Change * 100).ToString("+0.00;-0.00;0"), GetTimeSpanString(DateTime.Now - item.LastChangeDate))}");
+            }
+
+            if (!lines.Any())
+            {
+                await ReplyAsync("There are no prices!");
 
                 return;
             }
+
+            lines = lines.OrderBy(x => x).ToList();
+
+            await ReplyAsync(string.Join("\r\n", lines));
         }
 
         private static string GetTimeSpanString(TimeSpan span)

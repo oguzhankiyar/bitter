@@ -1,39 +1,44 @@
-﻿using OK.Bitter.Api.Inputs;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
 using OK.Bitter.Common.Enumerations;
 using OK.Bitter.Core.Repositories;
 using OK.Bitter.Core.Services;
-using System.Linq;
-using System.Threading.Tasks;
+using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
 {
-    public class StartCommand : IBotCommand
+    [Command("/start")]
+    public class StartCommand : BaseCommand
     {
         private readonly IUserRepository _userRepository;
         private readonly IMessageService _messageService;
 
-        public StartCommand(IUserRepository userRepository,
-                            IMessageService messageService)
+        public StartCommand(
+            IUserRepository userRepository,
+            IMessageService messageService,
+            IServiceProvider serviceProvider) : base(serviceProvider)
         {
-            _userRepository = userRepository;
-            _messageService = messageService;
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
         }
 
-        public async Task ExecuteAsync(BotUpdateInput input)
+        [CommandCase]
+        public async Task StartAsync()
         {
-            string result = $"Wellcome @{input.Message.From.Username}!\r\n";
+            string result = $"Wellcome @{Context.Username}!\r\n";
 
             result += "If you want to authenticate this bot, please type /auth command with password.\r\n\r\n";
 
             result += "Example:\r\n/auth 123456";
 
-            await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), result);
+            await ReplyAsync(result);
 
             var admins = _userRepository.FindUsers().Where(x => x.Type == UserTypeEnum.Admin);
 
             foreach (var admin in admins)
             {
-                await _messageService.SendMessageAsync(admin.ChatId, $"@{input.Message.From.Username} is joined!");
+                await _messageService.SendMessageAsync(admin.ChatId, $"@{Context.Username} is joined!");
             }
         }
     }

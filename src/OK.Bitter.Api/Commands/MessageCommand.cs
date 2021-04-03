@@ -1,35 +1,33 @@
-﻿using OK.Bitter.Api.Inputs;
-using OK.Bitter.Common.Entities;
+﻿using System;
+using System.Threading.Tasks;
 using OK.Bitter.Common.Enumerations;
 using OK.Bitter.Core.Repositories;
 using OK.Bitter.Core.Services;
-using System.Threading.Tasks;
+using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
 {
-    public class MessageCommand : IBotCommand
+    [Command("message")]
+    public class MessageCommand : BaseCommand
     {
         private readonly IUserRepository _userRepository;
         private readonly IMessageService _messageService;
 
-        public MessageCommand(IUserRepository userRepository,
-                              IMessageService messageService)
+        public MessageCommand(
+            IUserRepository userRepository,
+            IMessageService messageService,
+            IServiceProvider serviceProvider) : base(serviceProvider)
         {
-            _userRepository = userRepository;
-            _messageService = messageService;
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
         }
 
-        public async Task ExecuteAsync(BotUpdateInput input)
+        [CommandCase("{message}")]
+        public async Task SendAsync(string message)
         {
-            string message = input.Message.Text.Trim();
-
-            message = message.Replace((message + " ").Split(' ')[0], string.Empty).Trim();
-
-            UserEntity user = _userRepository.FindUser(input.Message.Chat.Id.ToString());
-
-            if (user == null || user.Type != UserTypeEnum.Admin)
+            if (User == null || User.Type != UserTypeEnum.Admin)
             {
-                await _messageService.SendMessageAsync(input.Message.Chat.Id.ToString(), "Unauthorized!");
+                await ReplyAsync("Unauthorized!");
 
                 return;
             }
