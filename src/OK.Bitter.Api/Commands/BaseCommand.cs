@@ -27,9 +27,9 @@ namespace OK.Bitter.Api.Commands
 
         public override Task OnPreExecutionAsync()
         {
-            User = _userRepository.FindUser(Context.ChatId);
+            User = _userRepository.Get(x => x.ChatId == Context.ChatId);
 
-            _messageRepository.InsertMessage(new MessageEntity()
+            _messageRepository.Save(new MessageEntity()
             {
                 UserId = User?.Id,
                 ChatId = Context.ChatId.ToString(),

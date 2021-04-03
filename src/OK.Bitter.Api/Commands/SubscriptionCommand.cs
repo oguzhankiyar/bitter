@@ -44,13 +44,13 @@ namespace OK.Bitter.Api.Commands
         {
             if (symbol == "all")
             {
-                var subscriptions = _subscriptionRepository.FindSubscriptions().Where(x => x.UserId == User.Id);
+                var subscriptions = _subscriptionRepository.GetList(x => x.UserId == User.Id);
 
                 var lines = new List<string>();
 
                 foreach (var item in subscriptions)
                 {
-                    var sym = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Id == item.SymbolId);
+                    var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
                     lines.Add($"{sym.FriendlyName} for minimum {(item.MinimumChange * 100).ToString("0.00")}% change");
                 }
@@ -70,7 +70,7 @@ namespace OK.Bitter.Api.Commands
             }
             else
             {
-                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
                 if (symbolEntity == null)
                 {
                     await ReplyAsync("Symbol is not found!");
@@ -78,7 +78,7 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                var subscription = _subscriptionRepository.FindSubscription(symbolEntity.Id, User.Id);
+                var subscription = _subscriptionRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
                 if (subscription == null)
                 {
                     await ReplyAsync("Subscription is not found!");
@@ -104,14 +104,14 @@ namespace OK.Bitter.Api.Commands
 
             if (symbol == "all")
             {
-                var symbols = _symbolRepository.FindSymbols();
+                var symbols = _symbolRepository.GetList();
 
                 foreach (var symbolEntity in symbols)
                 {
-                    var subscription = _subscriptionRepository.FindSubscription(symbolEntity.Id, User.Id);
+                    var subscription = _subscriptionRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
                     if (subscription == null)
                     {
-                        _subscriptionRepository.InsertSubscription(new SubscriptionEntity()
+                        _subscriptionRepository.Save(new SubscriptionEntity()
                         {
                             UserId = User.Id,
                             SymbolId = symbolEntity.Id,
@@ -122,13 +122,13 @@ namespace OK.Bitter.Api.Commands
                     {
                         subscription.MinimumChange = minimumChange;
 
-                        _subscriptionRepository.UpdateSubscription(subscription);
+                        _subscriptionRepository.Save(subscription);
                     }
                 }
             }
             else
             {
-                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
                 if (symbolEntity == null)
                 {
                     await ReplyAsync("Symbol is not found!");
@@ -143,10 +143,10 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                var subscription = _subscriptionRepository.FindSubscription(symbolEntity.Id, User.Id);
+                var subscription = _subscriptionRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
                 if (subscription == null)
                 {
-                    _subscriptionRepository.InsertSubscription(new SubscriptionEntity()
+                    _subscriptionRepository.Save(new SubscriptionEntity()
                     {
                         UserId = User.Id,
                         SymbolId = symbolEntity.Id,
@@ -157,7 +157,7 @@ namespace OK.Bitter.Api.Commands
                 {
                     subscription.MinimumChange = minimumChange;
 
-                    _subscriptionRepository.UpdateSubscription(subscription);
+                    _subscriptionRepository.Save(subscription);
                 }
             }
 
@@ -171,16 +171,16 @@ namespace OK.Bitter.Api.Commands
         {
             if (symbol == "all")
             {
-                var subscriptions = _subscriptionRepository.FindSubscriptions().Where(x => x.UserId == User.Id);
+                var subscriptions = _subscriptionRepository.GetList(x => x.UserId == User.Id);
 
                 foreach (var subscription in subscriptions)
                 {
-                    _subscriptionRepository.RemoveSubscription(subscription.Id);
+                    _subscriptionRepository.Delete(subscription.Id);
                 }
             }
             else
             {
-                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
                 if (symbolEntity == null)
                 {
                     await ReplyAsync("Symbol is not found!");
@@ -188,7 +188,7 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                var subscription = _subscriptionRepository.FindSubscription(symbolEntity.Id, User.Id);
+                var subscription = _subscriptionRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
                 if (subscription == null)
                 {
                     await ReplyAsync("Subscription is not found!");
@@ -196,7 +196,7 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                _subscriptionRepository.RemoveSubscription(subscription.Id);
+                _subscriptionRepository.Delete(subscription.Id);
             }
 
             _socketServiceManager.UpdateSubscription(User.Id);

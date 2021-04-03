@@ -42,7 +42,7 @@ namespace OK.Bitter.Api.Commands
             }
             else
             {
-                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
                 if (symbolEntity == null)
                 {
                     await ReplyAsync("Symbol is not found!");

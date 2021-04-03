@@ -32,7 +32,7 @@ namespace OK.Bitter.Api.Commands
                 return;
             }
 
-            var users = _userRepository.FindUsers();
+            var users = _userRepository.GetList();
 
             foreach (var item in users)
             {

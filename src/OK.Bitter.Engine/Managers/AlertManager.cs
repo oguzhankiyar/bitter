@@ -18,33 +18,35 @@ namespace OK.Bitter.Engine.Managers
 
         public List<AlertModel> GetAlerts()
         {
-            return _alertRepository.FindAlerts()
-                                   .Select(x => new AlertModel()
-                                   {
-                                       UserId = x.UserId,
-                                       SymbolId = x.SymbolId,
-                                       LessValue = x.LessValue,
-                                       GreaterValue = x.GreaterValue
-                                   })
-                                   .ToList();
+            return _alertRepository
+                .GetList()
+                .Select(x => new AlertModel()
+                {
+                    UserId = x.UserId,
+                    SymbolId = x.SymbolId,
+                    LessValue = x.LessValue,
+                    GreaterValue = x.GreaterValue
+                })
+                .ToList();
         }
 
         public List<AlertModel> GetAlertsByUser(string userId)
         {
-            return _alertRepository.FindAlerts(userId)
-                                   .Select(x => new AlertModel()
-                                   {
-                                       UserId = x.UserId,
-                                       SymbolId = x.SymbolId,
-                                       LessValue = x.LessValue,
-                                       GreaterValue = x.GreaterValue
-                                   })
-                                   .ToList();
+            return _alertRepository
+                .GetList(x => x.UserId == userId)
+                .Select(x => new AlertModel()
+                {
+                    UserId = x.UserId,
+                    SymbolId = x.SymbolId,
+                    LessValue = x.LessValue,
+                    GreaterValue = x.GreaterValue
+                })
+                .ToList();
         }
 
         public bool UpdateAsAlerted(string userId, string symbolId, DateTime date)
         {
-            var alert = _alertRepository.FindAlert(userId, symbolId);
+            var alert = _alertRepository.Get(x => x.UserId == userId && x.SymbolId == symbolId);
 
             if (alert == null)
             {
@@ -53,7 +55,9 @@ namespace OK.Bitter.Engine.Managers
 
             alert.LastAlertDate = date;
 
-            return _alertRepository.UpdateAlert(alert);
+            _alertRepository.Save(alert);
+
+            return true;
         }
     }
 }

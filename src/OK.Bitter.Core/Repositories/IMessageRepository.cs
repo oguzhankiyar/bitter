@@ -2,8 +2,8 @@
 
 namespace OK.Bitter.Core.Repositories
 {
-    public interface IMessageRepository
+    public interface IMessageRepository : IBaseRepository<MessageEntity>
     {
-        MessageEntity InsertMessage(MessageEntity message);
+
     }
 }

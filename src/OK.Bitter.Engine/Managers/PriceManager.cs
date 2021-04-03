@@ -23,16 +23,17 @@ namespace OK.Bitter.Engine.Managers
 
         public List<PriceModel> GetLastPrices()
         {
-            var lastPrices = _priceRepository.FindPrices()
-                                             .GroupBy(x => x.SymbolId)
-                                             .Select(x => x.OrderByDescending(y => y.Date).Last())
-                                             .Select(x => new PriceModel()
-                                             {
-                                                 SymbolId = x.SymbolId,
-                                                 Price = x.Price,
-                                                 Date = x.Date
-                                             })
-                                             .ToList();
+            var lastPrices = _priceRepository
+                .GetList()
+                .GroupBy(x => x.SymbolId)
+                .Select(x => x.OrderByDescending(y => y.Date).Last())
+                .Select(x => new PriceModel()
+                {
+                    SymbolId = x.SymbolId,
+                    Price = x.Price,
+                    Date = x.Date
+                })
+                .ToList();
 
             var symbols = _symbolManager.GetSymbols();
 
@@ -64,7 +65,7 @@ namespace OK.Bitter.Engine.Managers
         {
             try
             {
-                _priceRepository.InsertPrice(new PriceEntity()
+                _priceRepository.Save(new PriceEntity()
                 {
                     SymbolId = symbolId,
                     Price = price,

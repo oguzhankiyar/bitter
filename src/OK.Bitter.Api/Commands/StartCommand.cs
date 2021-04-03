@@ -34,7 +34,7 @@ namespace OK.Bitter.Api.Commands
 
             await ReplyAsync(result);
 
-            var admins = _userRepository.FindUsers().Where(x => x.Type == UserTypeEnum.Admin);
+            var admins = _userRepository.GetList(x => x.Type == UserTypeEnum.Admin);
 
             foreach (var admin in admins)
             {

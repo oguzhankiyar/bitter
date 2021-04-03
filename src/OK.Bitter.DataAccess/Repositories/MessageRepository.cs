@@ -6,13 +6,9 @@ namespace OK.Bitter.DataAccess.Repositories
 {
     public class MessageRepository : BaseRepository<MessageEntity>, IMessageRepository
     {
-        public MessageRepository(BitterDataContext context) : base(context, "Messages")
+        public MessageRepository(BitterDataContext context) : base(context.Messages)
         {
-        }
 
-        public MessageEntity InsertMessage(MessageEntity message)
-        {
-            return Save(message);
         }
     }
 }

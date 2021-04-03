@@ -44,13 +44,13 @@ namespace OK.Bitter.Api.Commands
         {
             if (symbol == "all")
             {
-                var alerts = _alertRepository.FindAlerts(User.Id);
+                var alerts = _alertRepository.GetList(x => x.UserId == User.Id);
 
                 var lines = new List<string>();
 
                 foreach (var item in alerts)
                 {
-                    var sym = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Id == item.SymbolId);
+                    var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
                     var line = $"{sym.FriendlyName} when";
 
@@ -82,7 +82,7 @@ namespace OK.Bitter.Api.Commands
             }
             else
             {
-                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
                 if (symbolEntity == null)
                 {
                     await ReplyAsync("Symbol is not found!");
@@ -90,7 +90,7 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                var alert = _alertRepository.FindAlert(User.Id, symbolEntity.Id);
+                var alert = _alertRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
                 if (alert == null)
                 {
                     await ReplyAsync("Alert is not found!");
@@ -117,7 +117,7 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("set", "{symbol}", "{condition}", "{treshold}")]
         public async Task SetAsync(string symbol, string condition, string treshold)
         {
-            var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+            var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
             if (symbolEntity == null)
             {
                 await ReplyAsync("Symbol is not found!");
@@ -132,13 +132,13 @@ namespace OK.Bitter.Api.Commands
                 return;
             }
 
-            var alert = _alertRepository.FindAlert(User.Id, symbolEntity.Id);
+            var alert = _alertRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
 
             if (condition == "less")
             {
                 if (alert == null)
                 {
-                    _alertRepository.InsertAlert(new AlertEntity()
+                    _alertRepository.Save(new AlertEntity()
                     {
                         UserId = User.Id,
                         SymbolId = symbolEntity.Id,
@@ -149,7 +149,7 @@ namespace OK.Bitter.Api.Commands
                 {
                     alert.LessValue = tresholdValue;
 
-                    _alertRepository.UpdateAlert(alert);
+                    _alertRepository.Save(alert);
                 }
 
                 _socketServiceManager.UpdateAlert(User.Id);
@@ -161,7 +161,7 @@ namespace OK.Bitter.Api.Commands
             {
                 if (alert == null)
                 {
-                    _alertRepository.InsertAlert(new AlertEntity()
+                    _alertRepository.Save(new AlertEntity()
                     {
                         UserId = User.Id,
                         SymbolId = symbolEntity.Id,
@@ -172,7 +172,7 @@ namespace OK.Bitter.Api.Commands
                 {
                     alert.GreaterValue = tresholdValue;
 
-                    _alertRepository.UpdateAlert(alert);
+                    _alertRepository.Save(alert);
                 }
 
                 _socketServiceManager.UpdateAlert(User.Id);
@@ -192,11 +192,11 @@ namespace OK.Bitter.Api.Commands
         {
             if (symbol == "all")
             {
-                var alerts = _alertRepository.FindAlerts(User.Id);
+                var alerts = _alertRepository.GetList(x => x.UserId == User.Id);
 
                 foreach (var alert in alerts)
                 {
-                    _alertRepository.RemoveAlert(alert.Id);
+                    _alertRepository.Delete(alert.Id);
                 }
 
                 _socketServiceManager.UpdateAlert(User.Id);
@@ -205,7 +205,7 @@ namespace OK.Bitter.Api.Commands
             }
             else
             {
-                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
 
                 if (symbolEntity == null)
                 {
@@ -214,7 +214,7 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                var alert = _alertRepository.FindAlert(User.Id, symbolEntity.Id);
+                var alert = _alertRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
 
                 if (alert == null)
                 {
@@ -222,7 +222,7 @@ namespace OK.Bitter.Api.Commands
                 }
                 else
                 {
-                    _alertRepository.RemoveAlert(alert.Id);
+                    _alertRepository.Delete(alert.Id);
 
                     _socketServiceManager.UpdateAlert(User.Id);
 

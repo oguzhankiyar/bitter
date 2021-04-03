@@ -18,32 +18,32 @@ namespace OK.Bitter.Engine.Managers
 
         public List<SubscriptionModel> GetSubscriptions()
         {
-            return _subscriptionRepository.FindSubscriptions()
-                                          .Select(x => new SubscriptionModel()
-                                          {
-                                              UserId = x.UserId,
-                                              SymbolId = x.SymbolId,
-                                              MinimumChange = x.MinimumChange
-                                          })
-                                          .ToList();
+            return _subscriptionRepository
+                .GetList()
+                .Select(x => new SubscriptionModel()
+                {
+                    UserId = x.UserId,
+                    SymbolId = x.SymbolId,
+                    MinimumChange = x.MinimumChange
+                })
+                .ToList();
         }
 
         public List<SubscriptionModel> GetSubscriptionsByUser(string userId)
         {
-            return _subscriptionRepository.FindSubscriptions()
-                                          .Where(x => x.UserId == userId)
-                                          .Select(x => new SubscriptionModel()
-                                          {
-                                              UserId = x.UserId,
-                                              SymbolId = x.SymbolId,
-                                              MinimumChange = x.MinimumChange
-                                          })
-                                          .ToList();
+            return _subscriptionRepository.GetList(x => x.UserId == userId)
+                .Select(x => new SubscriptionModel()
+                {
+                    UserId = x.UserId,
+                    SymbolId = x.SymbolId,
+                    MinimumChange = x.MinimumChange
+                })
+                .ToList();
         }
 
         public bool UpdateAsNotified(string userId, string symbolId, decimal price, DateTime date)
         {
-            var subscription = _subscriptionRepository.FindSubscription(symbolId, userId);
+            var subscription = _subscriptionRepository.Get(x => x.UserId == userId && x.SymbolId == symbolId);
 
             if (subscription == null)
             {
@@ -53,7 +53,9 @@ namespace OK.Bitter.Engine.Managers
             subscription.LastNotifiedPrice = price;
             subscription.LastNotifiedDate = date;
 
-            return _subscriptionRepository.UpdateSubscription(subscription);
+            _subscriptionRepository.Save(subscription);
+
+            return true;
         }
     }
 }

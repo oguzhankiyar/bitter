@@ -37,7 +37,7 @@ namespace OK.Bitter.Api.Commands
         {
             if (key == "all")
             {
-                var settings = _settingRepository.FindSettings(User.Id);
+                var settings = _settingRepository.GetList(x => x.UserId == User.Id);
 
                 var lines = new List<string>();
 
@@ -61,7 +61,7 @@ namespace OK.Bitter.Api.Commands
             }
             else
             {
-                var setting = _settingRepository.FindSetting(User.Id, key);
+                var setting = _settingRepository.Get(x => x.UserId == User.Id && x.Key == key);
                 if (setting == null)
                 {
                     await ReplyAsync("Setting is not found!");
@@ -78,10 +78,10 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("set", "{key}", "{value}")]
         public async Task SetAsync(string key, string value)
         {
-            var setting = _settingRepository.FindSetting(User.Id, key);
+            var setting = _settingRepository.Get(x => x.UserId == User.Id && x.Key == key);
             if (setting == null)
             {
-                _settingRepository.InsertSetting(new SettingEntity()
+                _settingRepository.Save(new SettingEntity()
                 {
                     UserId = User.Id,
                     Key = key,
@@ -92,7 +92,7 @@ namespace OK.Bitter.Api.Commands
             {
                 setting.Value = value;
 
-                _settingRepository.UpdateSetting(setting);
+                _settingRepository.Save(setting);
             }
 
             await ReplyAsync("Success!");
@@ -101,7 +101,7 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("del", "{key}")]
         public async Task DelAsync(string key)
         {
-            var setting = _settingRepository.FindSetting(User.Id, key);
+            var setting = _settingRepository.Get(x => x.UserId == User.Id && x.Key == key);
             if (setting == null)
             {
                 await ReplyAsync("Setting is not found!");
@@ -109,7 +109,7 @@ namespace OK.Bitter.Api.Commands
                 return;
             }
 
-            _settingRepository.RemoveSetting(setting.Id);
+            _settingRepository.Delete(setting.Id);
 
             await ReplyAsync("Success!");
         }

@@ -32,7 +32,7 @@ namespace OK.Bitter.Api.Commands
             {
                 string result = string.Empty;
 
-                var users = _userRepository.FindUsers();
+                var users = _userRepository.GetList();
 
                 foreach (var item in users)
                 {
@@ -43,7 +43,7 @@ namespace OK.Bitter.Api.Commands
             }
             else
             {
-                var userEntity = _userRepository.FindUser(name);
+                var userEntity = _userRepository.Get(x => x.Username == name);
                 if (userEntity == null)
                 {
                     await ReplyAsync("User is not found!");

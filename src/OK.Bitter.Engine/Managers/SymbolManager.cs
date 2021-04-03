@@ -22,20 +22,21 @@ namespace OK.Bitter.Engine.Managers
         {
             InitSymbols();
 
-            return _symbolRepository.FindSymbols()
-                                    .Select(x => new SymbolModel
-                                    {
-                                        Id = x.Id,
-                                        Name = x.Name,
-                                        FriendlyName = x.FriendlyName,
-                                        MinimumChange = x.MinimumChange
-                                    })
-                                    .ToList();
+            return _symbolRepository
+                .GetList()
+                .Select(x => new SymbolModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    FriendlyName = x.FriendlyName,
+                    MinimumChange = x.MinimumChange
+                })
+                .ToList();
         }
 
         private void InitSymbols()
         {
-            var symbols = _symbolRepository.FindSymbols();
+            var symbols = _symbolRepository.GetList();
 
             List<string> importantSymbols = new List<string>() { "BTC|USDT" };
 
@@ -45,7 +46,7 @@ namespace OK.Bitter.Engine.Managers
 
                 if (!symbols.Any(x => x.FriendlyName == friendlyName))
                 {
-                    _symbolRepository.InsertSymbol(new SymbolEntity()
+                    _symbolRepository.Save(new SymbolEntity()
                     {
                         Name = symbol,
                         FriendlyName = friendlyName,
@@ -60,7 +61,7 @@ namespace OK.Bitter.Engine.Managers
 
                 if (!symbols.Any(x => x.FriendlyName == friendlyName))
                 {
-                    _symbolRepository.InsertSymbol(new SymbolEntity()
+                    _symbolRepository.Save(new SymbolEntity()
                     {
                         Name = symbol,
                         FriendlyName = friendlyName,

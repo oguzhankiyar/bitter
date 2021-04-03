@@ -24,18 +24,19 @@ namespace OK.Bitter.Engine.Managers
 
         public List<UserModel> GetUsers()
         {
-            return _userRepository.FindUsers()
-                                  .Select(x => new UserModel()
-                                  {
-                                      Id = x.Id,
-                                      ChatId = x.ChatId
-                                  })
-                                  .ToList();
+            return _userRepository
+                .GetList()
+                .Select(x => new UserModel()
+                {
+                    Id = x.Id,
+                    ChatId = x.ChatId
+                })
+                .ToList();
         }
 
         public bool SendMessage(string userId, string message)
         {
-            var user = _userRepository.FindUserById(userId);
+            var user = _userRepository.Get(x => x.Id == userId);
 
             if (user == null)
             {
@@ -49,11 +50,11 @@ namespace OK.Bitter.Engine.Managers
 
         public bool CallUser(string userId, string message)
         {
-            var tokenSetting = _settingRepository.FindSetting(userId, "alert_token");
+            var tokenSetting = _settingRepository.Get(x => x.UserId == userId && x.Key == "alert_token");
 
             if (tokenSetting != null)
             {
-                var callSetting = _settingRepository.FindSetting(userId, "call_enabled");
+                var callSetting = _settingRepository.Get(x => x.UserId == userId && x.Key == "call_enabled");
 
                 var trueValues = new string[] { "1", "true" };
 

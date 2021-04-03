@@ -62,11 +62,11 @@ namespace OK.Bitter.Api.Commands
 
             if (symbol == "all")
             {
-                prices = _priceRepository.FindPrices(startDate).OrderBy(x => x.Date);
+                prices = _priceRepository.GetList(x => x.CreatedDate >= startDate).OrderBy(x => x.Date);
             }
             else
             {
-                var symbolEntity = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
+                var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
                 if (symbolEntity == null)
                 {
                     await ReplyAsync("Symbol is not found!");
@@ -74,14 +74,14 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                prices = _priceRepository.FindPrices(symbolEntity.Id, startDate).OrderBy(x => x.Date);
+                prices = _priceRepository.GetList(x => x.SymbolId == symbolEntity.Id && x.Date >= startDate).OrderBy(x => x.Date);
             }
 
             var lines = new List<string>();
 
             foreach (var item in prices)
             {
-                var sym = _symbolRepository.FindSymbols().FirstOrDefault(x => x.Id == item.SymbolId);
+                var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
                 lines.Add($"{item.Date.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Price} {string.Format("[{0}%{1}]", (item.Change * 100).ToString("+0.00;-0.00;0"), GetTimeSpanString(DateTime.Now - item.LastChangeDate))}");
             }

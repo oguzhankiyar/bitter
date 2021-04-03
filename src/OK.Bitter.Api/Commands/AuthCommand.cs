@@ -37,7 +37,7 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("{key}")]
         public async Task LoginAsync(string key)
         {
-            var user = _userRepository.FindUser(Context.ChatId);
+            var user = _userRepository.Get(x => x.ChatId == Context.ChatId);
 
             if (user == null)
             {
@@ -62,18 +62,18 @@ namespace OK.Bitter.Api.Commands
 
             if (string.IsNullOrEmpty(user.Id))
             {
-                _userRepository.InsertUser(user);
+                _userRepository.Save(user);
             }
             else
             {
-                _userRepository.UpdateUser(user);
+                _userRepository.Save(user);
             }
 
             _socketServiceManager.UpdateUsers();
 
             await _messageService.SendMessageAsync(user.ChatId, "Success!");
 
-            var admins = _userRepository.FindUsers().Where(x => x.Type == UserTypeEnum.Admin);
+            var admins = _userRepository.GetList(x => x.Type == UserTypeEnum.Admin);
 
             foreach (var admin in admins)
             {
