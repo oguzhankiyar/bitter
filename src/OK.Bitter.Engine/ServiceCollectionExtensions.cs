@@ -2,6 +2,7 @@
 using OK.Bitter.Api.HostedServices;
 using OK.Bitter.Core.Managers;
 using OK.Bitter.Engine.Managers;
+using OK.Bitter.Engine.Streams;
 
 namespace OK.Bitter.Engine
 {
@@ -15,6 +16,8 @@ namespace OK.Bitter.Engine
             services.AddTransient<ISymbolManager, SymbolManager>();
             services.AddTransient<IUserManager, UserManager>();
             services.AddSingleton<ISocketServiceManager, SocketServiceManager>();
+
+            services.AddTransient<IPriceStream, PriceStream>();
 
             services.AddHostedService<SocketHostedService>();
             services.AddHostedService<SymbolHostedService>();
