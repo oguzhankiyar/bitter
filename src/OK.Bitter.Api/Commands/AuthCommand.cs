@@ -71,7 +71,7 @@ namespace OK.Bitter.Api.Commands
 
             _socketServiceManager.UpdateUsers();
 
-            await _messageService.SendMessageAsync(user.ChatId, "Success!");
+            await ReplyAsync("Success!");
 
             var admins = _userRepository.GetList(x => x.Type == UserTypeEnum.Admin);
 

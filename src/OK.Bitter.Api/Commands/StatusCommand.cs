@@ -41,7 +41,7 @@ namespace OK.Bitter.Api.Commands
             {
                 var allStatus = _socketServiceManager.CheckStatus();
 
-                await _messageService.SendMessageAsync(User.ChatId, allStatus);
+                await ReplyAsync(allStatus);
 
                 return;
             }
@@ -49,14 +49,14 @@ namespace OK.Bitter.Api.Commands
             var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
             if (symbolEntity == null)
             {
-                await _messageService.SendMessageAsync(User.ChatId, "Symbol is not found!");
+                await ReplyAsync("Symbol is not found!");
 
                 return;
             }
 
             var symbolStatus = _socketServiceManager.CheckSymbolStatus(symbolEntity.Id);
 
-            await _messageService.SendMessageAsync(User.ChatId, symbolStatus);
+            await ReplyAsync(symbolStatus);
         }
     }
 }
