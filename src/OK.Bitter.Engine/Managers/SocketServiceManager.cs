@@ -1,13 +1,12 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using OK.Bitter.Common.Models;
-using OK.Bitter.Core.Managers;
-using OK.Bitter.Engine.Extensions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using WebSocket4Net;
+using Microsoft.Extensions.DependencyInjection;
+using OK.Bitter.Common.Models;
+using OK.Bitter.Core.Managers;
+using OK.Bitter.Engine.Extensions;
+using OK.Bitter.Engine.Streams;
 
 namespace OK.Bitter.Engine.Managers
 {
@@ -23,7 +22,7 @@ namespace OK.Bitter.Engine.Managers
 
         public List<AlertModel> SymbolAlerts { get; set; }
 
-        public IDictionary<string, WebSocket> SymbolSockets { get; set; }
+        public IDictionary<string, IPriceStream> SymbolStreams { get; set; }
 
         private IDictionary<string, object> symbolNotifyLockObjects = new Dictionary<string, object>();
         private IDictionary<string, object> symbolAlertLockObjects = new Dictionary<string, object>();
@@ -34,30 +33,34 @@ namespace OK.Bitter.Engine.Managers
         private readonly ISubscriptionManager _subscriptionManager;
         private readonly ISymbolManager _symbolManager;
         private readonly IPriceManager _priceManager;
+        private readonly IServiceProvider _serviceProvider;
 
-        public SocketServiceManager(IUserManager userManager,
-                                   IAlertManager alertManager,
-                                   ISubscriptionManager subscriptionManager,
-                                   ISymbolManager symbolManager,
-                                   IPriceManager priceManager)
+        public SocketServiceManager(
+            IUserManager userManager,
+            IAlertManager alertManager,
+            ISubscriptionManager subscriptionManager,
+            ISymbolManager symbolManager,
+            IPriceManager priceManager,
+            IServiceProvider serviceProvider)
         {
-            _userManager = userManager;
-            _alertManager = alertManager;
-            _subscriptionManager = subscriptionManager;
-            _symbolManager = symbolManager;
-            _priceManager = priceManager;
+            _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+            _alertManager = alertManager ?? throw new ArgumentNullException(nameof(alertManager));
+            _subscriptionManager = subscriptionManager ?? throw new ArgumentNullException(nameof(subscriptionManager));
+            _symbolManager = symbolManager ?? throw new ArgumentNullException(nameof(symbolManager));
+            _priceManager = priceManager ?? throw new ArgumentNullException(nameof(priceManager));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
             Users = new List<UserModel>();
             Symbols = new List<SymbolModel>();
             Prices = new List<PriceModel>();
             SymbolSubscriptions = new List<SubscriptionModel>();
             SymbolAlerts = new List<AlertModel>();
-            SymbolSockets = new Dictionary<string, WebSocket>();
+            SymbolStreams = new Dictionary<string, IPriceStream>();
         }
 
         public void Subscribe(SymbolModel symbol)
         {
-            if (SymbolSockets.ContainsKey(symbol.Id))
+            if (SymbolStreams.ContainsKey(symbol.Id))
             {
                 return;
             }
@@ -66,89 +69,45 @@ namespace OK.Bitter.Engine.Managers
             symbolAlertLockObjects.Add(symbol.Id, new { });
             symbolPriceLockObjects.Add(symbol.Id, new { });
 
-            string url = "wss://stream.binance.com:9443/ws/" + symbol.Name.Replace("|", string.Empty).ToLower() + "@aggTrade";
+            var stream = _serviceProvider.GetRequiredService<IPriceStream>();
 
-            WebSocket webSocket = new WebSocket(url);
-
-            webSocket.Opened += (s, e) =>
+            _ = Task.Run(async () =>
             {
-                try
-                {
-                    Console.WriteLine(symbol.FriendlyName + " stream is open!");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(JsonConvert.SerializeObject(ex));
-                }
-            };
+                await stream.InitAsync(symbol, message => OnPriceChanged(symbol, message));
 
-            webSocket.Closed += (s, e) =>
-            {
-                Console.WriteLine(symbol.FriendlyName + " stream is closed!");
+                await stream.StartAsync();
 
-                try
-                {
-                    webSocket.Open();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(JsonConvert.SerializeObject(ex));
-                }
-            };
-
-            webSocket.MessageReceived += (s, e) =>
-            {
-                try
-                {
-                    OnMessageReceived(symbol, e.Message);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(JsonConvert.SerializeObject(ex));
-                }
-            };
-
-            webSocket.Open();
-
-            SymbolSockets.Add(symbol.Id, webSocket);
+                SymbolStreams.Add(symbol.Id, stream);
+            });
         }
 
-
-        private void OnMessageReceived(SymbolModel symbol, string message)
+        private void OnPriceChanged(SymbolModel symbol, PriceModel price)
         {
-            var json = JObject.Parse(message);
-
-            decimal currentPrice = Convert.ToDecimal(json["p"].ToString());
-
-            AlertPriceAsync(symbol, currentPrice);
+            AlertPriceAsync(symbol, price.Price);
 
             var symbolPrice = Prices.FirstOrDefault(x => x.SymbolId == symbol.Id);
 
-            decimal lastPrice = symbolPrice.Price;
-
-            if (lastPrice == decimal.Zero)
+            if (symbolPrice.Price == decimal.Zero)
             {
-                symbolPrice.Date = DateTime.Now;
-                symbolPrice.Price = currentPrice;
+                symbolPrice.Date = price.Date;
+                symbolPrice.Price = price.Price;
             }
             else
             {
-                decimal change = (currentPrice - lastPrice) / lastPrice;
+                var change = (price.Price - symbolPrice.Price) / symbolPrice.Price;
 
                 if (Math.Abs(change) >= symbol.MinimumChange)
                 {
                     lock (symbolNotifyLockObjects[symbol.Id])
                     {
-                        NotifyPriceAsync(symbol, currentPrice);
+                        NotifyPriceAsync(symbol, price.Price);
 
-                        _priceManager.SaveLastPrice(symbol.Id, currentPrice, change, symbolPrice.Date, DateTime.Now);
+                        _priceManager.SaveLastPrice(symbol.Id, price.Price, change, symbolPrice.Date, DateTime.Now);
 
-                        symbolPrice.Price = currentPrice;
-                        symbolPrice.Date = DateTime.Now;
+                        symbolPrice.Price = price.Price;
+                        symbolPrice.Date = price.Date;
                     }
                 }
-
-                Console.WriteLine($"{symbol.Name} - Price: {currentPrice} Change: {change}");
             }
         }
 
@@ -224,9 +183,9 @@ namespace OK.Bitter.Engine.Managers
 
         public void UnsubscribeAll()
         {
-            SymbolSockets.Values.ToList().ForEach(socket =>
+            SymbolStreams.Values.ToList().ForEach(async stream =>
             {
-                socket.Close();
+                await stream.StopAsync();
             });
         }
 
@@ -297,7 +256,7 @@ namespace OK.Bitter.Engine.Managers
 
         public string CheckStatus()
         {
-            var symbolSockets = SymbolSockets;
+            var symbolSockets = SymbolStreams;
 
             string message = string.Empty;
 
@@ -305,7 +264,7 @@ namespace OK.Bitter.Engine.Managers
             {
                 var sym = Symbols.FirstOrDefault(x => x.Id == item.Key);
 
-                message += $"{sym.FriendlyName} symbol stream is {item.Value.State.ToString()}\r\n";
+                message += $"{sym.FriendlyName} symbol stream is {item.Value.State}\r\n";
             }
 
             return message;
@@ -313,11 +272,11 @@ namespace OK.Bitter.Engine.Managers
 
         public string CheckSymbolStatus(string symbolId)
         {
-            var symbolSocket = SymbolSockets.FirstOrDefault(x => x.Key == symbolId);
+            var stream = SymbolStreams.FirstOrDefault(x => x.Key == symbolId);
 
-            var sym3 = Symbols.FirstOrDefault(x => x.Id == symbolId);
+            var symbol = Symbols.FirstOrDefault(x => x.Id == symbolId);
 
-            return $"{sym3.FriendlyName} symbol stream is {symbolSocket.Value.State.ToString()}";
+            return $"{symbol.FriendlyName} symbol stream is {stream.Value.State}";
         }
     }
 }
