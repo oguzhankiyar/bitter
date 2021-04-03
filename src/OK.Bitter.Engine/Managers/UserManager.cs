@@ -59,7 +59,7 @@ namespace OK.Bitter.Engine.Managers
 
                 if (callSetting == null || trueValues.Contains(callSetting.Value))
                 {
-                    _callService.Call(tokenSetting.Value, message);
+                    _callService.CallAsync(tokenSetting.Value, message);
 
                     return true;
                 }

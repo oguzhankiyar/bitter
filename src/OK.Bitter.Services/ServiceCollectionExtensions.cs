@@ -1,14 +1,28 @@
 using Microsoft.Extensions.DependencyInjection;
 using OK.Bitter.Core.Services;
+using OK.Bitter.Services.Call.IFTTT;
+using OK.Bitter.Services.Message.Telegram;
 
 namespace OK.Bitter.Services
 {
     public static class ServiceCollectionExtensions
     {
-        public static void AddServicesLayer(this IServiceCollection services)
+        public static IServiceCollection AddTelegramMessageService(this IServiceCollection services, TelegramMessageServiceConfig config)
         {
-            services.AddTransient<ICallService, CallService.CallService>();
-            services.AddTransient<IMessageService, TelegramService.TelegramService>();
+            services.AddSingleton(config);
+
+            services.AddTransient<IMessageService, TelegramMessageService>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddIFTTTCallService(this IServiceCollection services, IFTTTCallServiceConfig config)
+        {
+            services.AddSingleton(config);
+
+            services.AddSingleton<ICallService, IFTTTCallService>();
+
+            return services;
         }
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OK.Bitter.Api.Config;
 using OK.Bitter.Api.HostedServices;
 using OK.Bitter.DataAccess;
 using OK.Bitter.Engine;
@@ -13,23 +14,30 @@ namespace OK.Bitter.Api
     public class Startup
     {
         private readonly IConfiguration _configuration;
+        private readonly BitterConfig _bitterConfig;
 
         public Startup(IConfiguration configuration)
         {
             _configuration = configuration;
+            _bitterConfig = new BitterConfig();
         }
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDataAccessLayer(_configuration.GetSection("MongoConfigurations")["ConnectionString"]);
+            _configuration.Bind(_bitterConfig);
 
-            services.AddServicesLayer();
+            services.AddSingleton(_bitterConfig);
+
+            services.AddDataAccessLayer(_bitterConfig.DataAccess);
+
+            services.AddTelegramMessageService(_bitterConfig.Telegram);
+            services.AddIFTTTCallService(_bitterConfig.IFTTT);
 
             services.AddEngineLayer();
 
             services.AddGramHook(opt =>
             {
-                opt.BotToken = _configuration.GetSection("ServiceConfigurations:TelegramService")["BotToken"];
+                opt.BotToken = _bitterConfig.Telegram.BotToken;
             });
 
             services.AddSingleton<ISocketHostedService, SocketHostedService>();
@@ -51,7 +59,7 @@ namespace OK.Bitter.Api
 
             app.UseHttpsRedirection();
 
-            app.UseGramHook("/api/v1/hooks");
+            app.UseGramHook(_bitterConfig.HookPath);
         }
     }
 }
