@@ -96,7 +96,17 @@ namespace OK.Bitter.Api.Commands
 
             lines = lines.OrderBy(x => x).ToList();
 
-            await ReplyAsync(string.Join("\r\n", lines));
+            var skip = 0;
+            var take = 25;
+
+            while (skip < lines.Count)
+            {
+                var items = lines.Skip(skip).Take(take);
+                await ReplyAsync(string.Join("\r\n", items));
+                await Task.Delay(500);
+
+                skip += take;
+            }
         }
     }
 }

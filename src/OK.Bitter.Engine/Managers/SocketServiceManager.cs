@@ -254,20 +254,20 @@ namespace OK.Bitter.Engine.Managers
             }
         }
 
-        public string CheckStatus()
+        public List<string> CheckStatus()
         {
             var symbolSockets = SymbolStreams;
 
-            string message = string.Empty;
+            var lines = new List<string>();
 
             foreach (var item in symbolSockets)
             {
                 var sym = Symbols.FirstOrDefault(x => x.Id == item.Key);
 
-                message += $"{sym.FriendlyName} symbol stream is {item.Value.State}\r\n";
+                lines.Add($"{sym.FriendlyName} symbol stream is {item.Value.State}");
             }
 
-            return message;
+            return lines;
         }
 
         public string CheckSymbolStatus(string symbolId)

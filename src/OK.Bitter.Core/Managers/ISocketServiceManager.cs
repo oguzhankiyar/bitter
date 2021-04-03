@@ -1,4 +1,5 @@
-﻿using OK.Bitter.Common.Models;
+﻿using System.Collections.Generic;
+using OK.Bitter.Common.Models;
 
 namespace OK.Bitter.Core.Managers
 {
@@ -18,7 +19,7 @@ namespace OK.Bitter.Core.Managers
 
         void UpdateAlert(string userId);
 
-        string CheckStatus();
+        List<string> CheckStatus();
 
         string CheckSymbolStatus(string symbolId);
 

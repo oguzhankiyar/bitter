@@ -39,9 +39,19 @@ namespace OK.Bitter.Api.Commands
 
             if (symbol == "all")
             {
-                var allStatus = _socketServiceManager.CheckStatus();
+                var lines = _socketServiceManager.CheckStatus();
 
-                await ReplyAsync(allStatus);
+                var skip = 0;
+                var take = 25;
+
+                while (skip < lines.Count)
+                {
+                    var items = lines.Skip(skip).Take(take);
+                    await ReplyAsync(string.Join("\r\n", items));
+                    await Task.Delay(500);
+
+                    skip += take;
+                }
 
                 return;
             }

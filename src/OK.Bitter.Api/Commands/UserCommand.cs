@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using OK.Bitter.Common.Enumerations;
 using OK.Bitter.Core.Repositories;
@@ -30,16 +32,26 @@ namespace OK.Bitter.Api.Commands
 
             if (name == "all")
             {
-                string result = string.Empty;
+                var lines = new List<string>();
 
                 var users = _userRepository.GetList();
 
                 foreach (var item in users)
                 {
-                    result += $"@{item.Username} - {item.FirstName} {item.LastName}\r\n";
+                    lines.Add($"@{item.Username} - {item.FirstName} {item.LastName}");
                 }
 
-                await ReplyAsync(result);
+                var skip = 0;
+                var take = 25;
+
+                while (skip < lines.Count)
+                {
+                    var items = lines.Skip(skip).Take(take);
+                    await ReplyAsync(string.Join("\r\n", items));
+                    await Task.Delay(500);
+
+                    skip += take;
+                }
             }
             else
             {
