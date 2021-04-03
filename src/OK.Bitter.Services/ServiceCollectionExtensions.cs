@@ -11,7 +11,7 @@ namespace OK.Bitter.Services
         {
             services.AddSingleton(config);
 
-            services.AddTransient<IMessageService, TelegramMessageService>();
+            services.AddSingleton<IMessageService, TelegramMessageService>();
 
             return services;
         }
