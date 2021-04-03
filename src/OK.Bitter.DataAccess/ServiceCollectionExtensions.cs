@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OK.Bitter.Core.Repositories;
 using OK.Bitter.DataAccess.Config;
 using OK.Bitter.DataAccess.DataContexts;
+using OK.Bitter.DataAccess.HostedServices;
 using OK.Bitter.DataAccess.Repositories;
 
 namespace OK.Bitter.DataAccess
@@ -22,6 +23,8 @@ namespace OK.Bitter.DataAccess
             services.AddTransient<ISubscriptionRepository, SubscriptionRepository>();
             services.AddTransient<ISymbolRepository, SymbolRepository>();
             services.AddTransient<IUserRepository, UserRepository>();
+
+            services.AddHostedService<SeedHostedService>();
         }
     }
 }
