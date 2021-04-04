@@ -124,16 +124,7 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("{type}", "{symbol}", "{volume}", "{price}", "{time}")]
         public async Task SetAsync(string type, string symbol, string volume, string price, string time)
         {
-            TradeTypeEnum? typeValue;
-            if (type == "buy")
-            {
-                typeValue = TradeTypeEnum.Buy;
-            }
-            else if (type == "sell")
-            {
-                typeValue = TradeTypeEnum.Sell;
-            }
-            else
+            if (!Enum.TryParse(type, true, out TradeTypeEnum typeValue))
             {
                 await ReplyAsync("Invalid arguments!");
 
@@ -169,16 +160,27 @@ namespace OK.Bitter.Api.Commands
                 return;
             }
 
-            var lastTrade = _tradeRepository.GetList(x => x.UserId == User.Id).LastOrDefault();
+            var userTrades = _tradeRepository.GetList(x => x.UserId == User.Id);
 
-            var lastTicket = lastTrade?.Ticket ?? 999;
+            if (typeValue == TradeTypeEnum.Sell)
+            {
+                var openVolume = userTrades.Where(x => x.SymbolId == symbolEntity.Id).Sum(x => (x.Type == TradeTypeEnum.Buy ? +1 : -1) * x.Volume);
+                if (openVolume < volumeValue)
+                {
+                    await ReplyAsync("The volume should not be greater than open volume!");
+
+                    return;
+                }
+            }
+
+            var lastTicket = userTrades.Any() ? userTrades.Last().Ticket : 999;
 
             var trade = new TradeEntity
             {
                 Ticket = lastTicket + 1,
                 UserId = User.Id,
                 SymbolId = symbolEntity.Id,
-                Type = typeValue.Value,
+                Type = typeValue,
                 Volume = volumeValue,
                 Price = priceValue,
                 Time = timeValue
