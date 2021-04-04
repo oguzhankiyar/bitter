@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using OK.Bitter.Common.Entities;
-using OK.Bitter.Core.Managers;
+using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Repositories;
+using OK.Bitter.Engine.Stores;
 using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
@@ -13,18 +14,18 @@ namespace OK.Bitter.Api.Commands
     public class AlertCommand : BaseCommand
     {
         private readonly IAlertRepository _alertRepository;
+        private readonly IStore<AlertModel> _alertStore;
         private readonly ISymbolRepository _symbolRepository;
-        private readonly ISocketServiceManager _socketServiceManager;
 
         public AlertCommand(
             IAlertRepository alertRepository,
+            IStore<AlertModel> alertStore,
             ISymbolRepository symbolRepository,
-            ISocketServiceManager socketServiceManager,
             IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _alertRepository = alertRepository ?? throw new ArgumentNullException(nameof(alertRepository));
+            _alertStore = alertStore ?? throw new ArgumentNullException(nameof(alertStore));
             _symbolRepository = symbolRepository ?? throw new ArgumentNullException(nameof(symbolRepository));
-            _socketServiceManager = socketServiceManager ?? throw new ArgumentNullException(nameof(socketServiceManager));
         }
 
         public override async Task OnPreExecutionAsync()
@@ -148,21 +149,27 @@ namespace OK.Bitter.Api.Commands
             {
                 if (alert == null)
                 {
-                    _alertRepository.Save(new AlertEntity()
+                    alert = new AlertEntity()
                     {
                         UserId = User.Id,
                         SymbolId = symbolEntity.Id,
                         LessValue = tresholdValue
-                    });
+                    };
                 }
                 else
                 {
                     alert.LessValue = tresholdValue;
-
-                    _alertRepository.Save(alert);
                 }
 
-                _socketServiceManager.UpdateAlert(User.Id);
+                _alertRepository.Save(alert);
+                _alertStore.Upsert(new AlertModel
+                {
+                    UserId = alert.UserId,
+                    SymbolId = alert.SymbolId,
+                    LessValue = alert.LessValue,
+                    GreaterValue = alert.GreaterValue,
+                    LastAlertDate = alert.LastAlertDate
+                });
 
                 await ReplyAsync("Success!");
 
@@ -171,21 +178,27 @@ namespace OK.Bitter.Api.Commands
             {
                 if (alert == null)
                 {
-                    _alertRepository.Save(new AlertEntity()
+                    alert = new AlertEntity()
                     {
                         UserId = User.Id,
                         SymbolId = symbolEntity.Id,
                         GreaterValue = tresholdValue
-                    });
+                    };
                 }
                 else
                 {
                     alert.GreaterValue = tresholdValue;
-
-                    _alertRepository.Save(alert);
                 }
 
-                _socketServiceManager.UpdateAlert(User.Id);
+                _alertRepository.Save(alert);
+                _alertStore.Upsert(new AlertModel
+                {
+                    UserId = alert.UserId,
+                    SymbolId = alert.SymbolId,
+                    LessValue = alert.LessValue,
+                    GreaterValue = alert.GreaterValue,
+                    LastAlertDate = alert.LastAlertDate
+                });
 
                 await ReplyAsync("Success!");
             }
@@ -207,9 +220,15 @@ namespace OK.Bitter.Api.Commands
                 foreach (var alert in alerts)
                 {
                     _alertRepository.Delete(alert.Id);
+                    _alertStore.Delete(new AlertModel
+                    {
+                        UserId = alert.UserId,
+                        SymbolId = alert.SymbolId,
+                        LessValue = alert.LessValue,
+                        GreaterValue = alert.GreaterValue,
+                        LastAlertDate = alert.LastAlertDate
+                    });
                 }
-
-                _socketServiceManager.UpdateAlert(User.Id);
 
                 await ReplyAsync("Success!");
             }
@@ -233,8 +252,14 @@ namespace OK.Bitter.Api.Commands
                 else
                 {
                     _alertRepository.Delete(alert.Id);
-
-                    _socketServiceManager.UpdateAlert(User.Id);
+                    _alertStore.Delete(new AlertModel
+                    {
+                        UserId = alert.UserId,
+                        SymbolId = alert.SymbolId,
+                        LessValue = alert.LessValue,
+                        GreaterValue = alert.GreaterValue,
+                        LastAlertDate = alert.LastAlertDate
+                    });
 
                     await ReplyAsync("Success!");
                 }

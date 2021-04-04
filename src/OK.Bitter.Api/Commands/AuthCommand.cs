@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 using OK.Bitter.Api.Config;
 using OK.Bitter.Common.Entities;
 using OK.Bitter.Common.Enumerations;
-using OK.Bitter.Core.Managers;
+using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Repositories;
 using OK.Bitter.Core.Services;
+using OK.Bitter.Engine.Stores;
 using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
@@ -17,20 +18,20 @@ namespace OK.Bitter.Api.Commands
     public class AuthCommand : BaseCommand
     {
         private readonly IUserRepository _userRepository;
+        private readonly IStore<UserModel> _userStore;
         private readonly IMessageService _messageService;
-        private readonly ISocketServiceManager _socketServiceManager;
         private readonly BitterConfig _bitterConfig;
 
         public AuthCommand(
             IUserRepository userRepository,
+            IStore<UserModel> userStore,
             IMessageService messageService,
-            ISocketServiceManager socketServiceManager,
             BitterConfig bitterConfig,
             IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _userStore = userStore ?? throw new ArgumentNullException(nameof(userStore));
             _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
-            _socketServiceManager = socketServiceManager ?? throw new ArgumentNullException(nameof(socketServiceManager));
             _bitterConfig = bitterConfig ?? throw new ArgumentNullException(nameof(bitterConfig));
         }
 
@@ -60,16 +61,12 @@ namespace OK.Bitter.Api.Commands
 
             user.Type = _bitterConfig.Passwords.FirstOrDefault(x => x.Value == key).Key;
 
-            if (string.IsNullOrEmpty(user.Id))
+            _userRepository.Save(user);
+            _userStore.Upsert(new UserModel
             {
-                _userRepository.Save(user);
-            }
-            else
-            {
-                _userRepository.Save(user);
-            }
-
-            _socketServiceManager.UpdateUsers();
+                Id = user.Id,
+                ChatId = user.ChatId
+            });
 
             await ReplyAsync("Success!");
 

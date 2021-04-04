@@ -2,18 +2,25 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
+using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
+using OK.Bitter.Engine.Stores;
 
 namespace OK.Bitter.Api.HostedServices
 {
     public class SymbolHostedService : IHostedService, IDisposable
     {
-        private readonly ISocketServiceManager _socketServiceManager;
+        private readonly ISymbolManager _symbolManager;
+        private readonly IStore<SymbolModel> _symbolStore;
+
         private Timer _timer;
 
-        public SymbolHostedService(ISocketServiceManager socketServiceManager)
+        public SymbolHostedService(
+            ISymbolManager symbolManager,
+            IStore<SymbolModel> symbolStore)
         {
-            _socketServiceManager = socketServiceManager;
+            _symbolManager = symbolManager ?? throw new ArgumentNullException(nameof(symbolManager));
+            _symbolStore = symbolStore ?? throw new ArgumentNullException(nameof(symbolStore));
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -25,7 +32,9 @@ namespace OK.Bitter.Api.HostedServices
 
         private void DoWork(object state)
         {
-            _socketServiceManager.UpdateSymbols();
+            _symbolManager
+                .GetSymbols()
+                .ForEach(_symbolStore.Upsert);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

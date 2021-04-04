@@ -1,8 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using OK.Bitter.Api.HostedServices;
+using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
 using OK.Bitter.Engine.Calculations;
 using OK.Bitter.Engine.Managers;
+using OK.Bitter.Engine.Stores;
 using OK.Bitter.Engine.Streams;
 
 namespace OK.Bitter.Engine
@@ -17,6 +19,12 @@ namespace OK.Bitter.Engine
             services.AddTransient<ISymbolManager, SymbolManager>();
             services.AddTransient<IUserManager, UserManager>();
             services.AddSingleton<ISocketServiceManager, SocketServiceManager>();
+
+            services.AddSingleton<IStore<UserModel>, UserStore>();
+            services.AddSingleton<IStore<SymbolModel>, SymbolStore>();
+            services.AddSingleton<IStore<PriceModel>, PriceStore>();
+            services.AddSingleton<IStore<SubscriptionModel>, SubscriptionStore>();
+            services.AddSingleton<IStore<AlertModel>, AlertStore>();
 
             services.AddTransient<IPriceStream, PriceStream>();
 

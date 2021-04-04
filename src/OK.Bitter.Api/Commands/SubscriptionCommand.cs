@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using OK.Bitter.Common.Entities;
-using OK.Bitter.Core.Managers;
+using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Repositories;
+using OK.Bitter.Engine.Stores;
 using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
@@ -13,18 +14,18 @@ namespace OK.Bitter.Api.Commands
     public class SubscriptionCommand : BaseCommand
     {
         private readonly ISubscriptionRepository _subscriptionRepository;
+        private readonly IStore<SubscriptionModel> _subscriptionStore;
         private readonly ISymbolRepository _symbolRepository;
-        private readonly ISocketServiceManager _socketServiceManager;
 
         public SubscriptionCommand(
             ISubscriptionRepository subscriptionRepository,
+            IStore<SubscriptionModel> subscriptionStore,
             ISymbolRepository symbolRepository,
-            ISocketServiceManager socketServiceManager,
             IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _subscriptionRepository = subscriptionRepository ?? throw new ArgumentNullException(nameof(subscriptionRepository));
+            _subscriptionStore = subscriptionStore ?? throw new ArgumentNullException(nameof(subscriptionStore));
             _symbolRepository = symbolRepository ?? throw new ArgumentNullException(nameof(symbolRepository));
-            _socketServiceManager = socketServiceManager ?? throw new ArgumentNullException(nameof(socketServiceManager));
         }
 
         public override async Task OnPreExecutionAsync()
@@ -121,19 +122,27 @@ namespace OK.Bitter.Api.Commands
                     var subscription = _subscriptionRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
                     if (subscription == null)
                     {
-                        _subscriptionRepository.Save(new SubscriptionEntity()
+                        subscription = new SubscriptionEntity()
                         {
                             UserId = User.Id,
                             SymbolId = symbolEntity.Id,
                             MinimumChange = minimumChange
-                        });
+                        };
                     }
                     else
                     {
                         subscription.MinimumChange = minimumChange;
-
-                        _subscriptionRepository.Save(subscription);
                     }
+
+                    _subscriptionRepository.Save(subscription);
+                    _subscriptionStore.Upsert(new SubscriptionModel
+                    {
+                        UserId = subscription.UserId,
+                        SymbolId = subscription.SymbolId,
+                        MinimumChange = subscription.MinimumChange,
+                        LastNotifiedPrice = subscription.LastNotifiedPrice,
+                        LastNotifiedDate = subscription.LastNotifiedDate
+                    });
                 }
             }
             else
@@ -156,22 +165,28 @@ namespace OK.Bitter.Api.Commands
                 var subscription = _subscriptionRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
                 if (subscription == null)
                 {
-                    _subscriptionRepository.Save(new SubscriptionEntity()
+                    subscription = new SubscriptionEntity()
                     {
                         UserId = User.Id,
                         SymbolId = symbolEntity.Id,
                         MinimumChange = minimumChange
-                    });
+                    };
                 }
                 else
                 {
                     subscription.MinimumChange = minimumChange;
-
-                    _subscriptionRepository.Save(subscription);
                 }
-            }
 
-            _socketServiceManager.UpdateSubscription(User.Id);
+                _subscriptionRepository.Save(subscription);
+                _subscriptionStore.Upsert(new SubscriptionModel
+                {
+                    UserId = subscription.UserId,
+                    SymbolId = subscription.SymbolId,
+                    MinimumChange = subscription.MinimumChange,
+                    LastNotifiedPrice = subscription.LastNotifiedPrice,
+                    LastNotifiedDate = subscription.LastNotifiedDate
+                });
+            }
 
             await ReplyAsync("Success!");
         }
@@ -186,6 +201,14 @@ namespace OK.Bitter.Api.Commands
                 foreach (var subscription in subscriptions)
                 {
                     _subscriptionRepository.Delete(subscription.Id);
+                    _subscriptionStore.Delete(new SubscriptionModel
+                    {
+                        UserId = subscription.UserId,
+                        SymbolId = subscription.SymbolId,
+                        MinimumChange = subscription.MinimumChange,
+                        LastNotifiedPrice = subscription.LastNotifiedPrice,
+                        LastNotifiedDate = subscription.LastNotifiedDate
+                    });
                 }
             }
             else
@@ -207,9 +230,15 @@ namespace OK.Bitter.Api.Commands
                 }
 
                 _subscriptionRepository.Delete(subscription.Id);
+                _subscriptionStore.Delete(new SubscriptionModel
+                {
+                    UserId = subscription.UserId,
+                    SymbolId = subscription.SymbolId,
+                    MinimumChange = subscription.MinimumChange,
+                    LastNotifiedPrice = subscription.LastNotifiedPrice,
+                    LastNotifiedDate = subscription.LastNotifiedDate
+                });
             }
-
-            _socketServiceManager.UpdateSubscription(User.Id);
 
             await ReplyAsync("Success!");
         }
