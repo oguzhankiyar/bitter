@@ -15,6 +15,7 @@ namespace OK.Bitter.DataAccess.DataContexts
         public IMongoCollection<SettingEntity> Settings => GetCollection<SettingEntity>(nameof(Settings));
         public IMongoCollection<SubscriptionEntity> Subscriptions => GetCollection<SubscriptionEntity>(nameof(Subscriptions));
         public IMongoCollection<SymbolEntity> Symbols => GetCollection<SymbolEntity>(nameof(Symbols));
+        public IMongoCollection<TradeEntity> Trades => GetCollection<TradeEntity>(nameof(Trades));
         public IMongoCollection<UserEntity> Users => GetCollection<UserEntity>(nameof(Users));
 
         public BitterDataContext(string connectionString, string databaseName)

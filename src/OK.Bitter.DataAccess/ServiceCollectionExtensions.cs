@@ -22,6 +22,7 @@ namespace OK.Bitter.DataAccess
             services.AddTransient<ISettingRepository, SettingRepository>();
             services.AddTransient<ISubscriptionRepository, SubscriptionRepository>();
             services.AddTransient<ISymbolRepository, SymbolRepository>();
+            services.AddTransient<ITradeRepository, TradeRepository>();
             services.AddTransient<IUserRepository, UserRepository>();
 
             services.AddHostedService<SeedHostedService>();

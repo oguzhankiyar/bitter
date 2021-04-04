@@ -100,6 +100,21 @@ namespace OK.Bitter.DataAccess.HostedServices
                 },
                  cancellationToken);
 
+            await _context.Trades.Indexes.CreateManyAsync(
+                 new[]
+                 {
+                    new CreateIndexModel<TradeEntity>(
+                        Builders<TradeEntity>.IndexKeys.Ascending(x => x.UserId),
+                        new CreateIndexOptions { Name = "UserId_1" }),
+                    new CreateIndexModel<TradeEntity>(
+                        Builders<TradeEntity>.IndexKeys.Ascending(x => x.SymbolId),
+                        new CreateIndexOptions { Name = "SymbolId_1" }),
+                    new CreateIndexModel<TradeEntity>(
+                        Builders<TradeEntity>.IndexKeys.Ascending(x => x.UserId).Ascending(x => x.SymbolId),
+                        new CreateIndexOptions { Name = "UserId_1_SymbolId_1" })
+                 },
+                 cancellationToken);
+
             await _context.Users.Indexes.CreateManyAsync(
                 new[]
                 {

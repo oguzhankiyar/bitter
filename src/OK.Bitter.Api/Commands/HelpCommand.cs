@@ -51,6 +51,12 @@ namespace OK.Bitter.Api.Commands
                 lines.Add("- alerts del <symbol>");
                 lines.Add(string.Empty);
 
+                lines.Add("Manage your trades");
+                lines.Add("- trades get <all|symbol>");
+                lines.Add("- trades buy <symbol> <volume> <price> <time>");
+                lines.Add("- trades sell <symbol> <volume> <price> <time>");
+                lines.Add(string.Empty);
+
                 lines.Add("Get price history");
                 lines.Add("- prices get <all|symbol> <interval>");
                 lines.Add(string.Empty);
