@@ -49,7 +49,7 @@ namespace OK.Bitter.Api.Commands
                 {
                     var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
-                    var line = $"{item.Time.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()}]";
+                    var line = $"{item.Time.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()} #{item.Ticket}]";
 
                     lines.Add(line);
                 }
@@ -93,7 +93,7 @@ namespace OK.Bitter.Api.Commands
                 {
                     var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
-                    var line = $"{item.Time.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()}]";
+                    var line = $"{item.Time.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()} #{item.Ticket}]";
 
                     lines.Add(line);
                 }
@@ -169,8 +169,13 @@ namespace OK.Bitter.Api.Commands
                 return;
             }
 
+            var lastTrade = _tradeRepository.GetList(x => x.UserId == User.Id).LastOrDefault();
+
+            var lastTicket = lastTrade?.Ticket ?? 999;
+
             var trade = new TradeEntity
             {
+                Ticket = lastTicket + 1,
                 UserId = User.Id,
                 SymbolId = symbolEntity.Id,
                 Type = typeValue.Value,
@@ -182,6 +187,43 @@ namespace OK.Bitter.Api.Commands
             _tradeRepository.Save(trade);
 
             await ReplyAsync("Success!");
+        }
+
+        [CommandCase("del", "{ticket}")]
+        public async Task DelAsync(string ticket)
+        {
+            if (ticket == "all")
+            {
+                var trades = _tradeRepository.GetList(x => x.UserId == User.Id);
+
+                foreach (var trade in trades)
+                {
+                    _tradeRepository.Delete(trade.Id);
+                }
+
+                await ReplyAsync("Success!");
+            }
+            else
+            {
+                if (!int.TryParse(ticket, out int ticketValue))
+                {
+                    await ReplyAsync("Invalid arguments!");
+
+                    return;
+                }
+
+                var trade = _tradeRepository.Get(x => x.UserId == User.Id && x.Ticket == ticketValue);
+                if (trade == null)
+                {
+                    await ReplyAsync("Trade is not found!");
+                }
+                else
+                {
+                    _tradeRepository.Delete(trade.Id);
+
+                    await ReplyAsync("Success!");
+                }
+            }
         }
     }
 }

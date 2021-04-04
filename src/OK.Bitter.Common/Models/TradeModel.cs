@@ -5,6 +5,8 @@ namespace OK.Bitter.Common.Models
 {
     public class TradeModel
     {
+        public int Ticket { get; set; }
+
         public string UserId { get; set; }
 
         public string SymbolId { get; set; }
