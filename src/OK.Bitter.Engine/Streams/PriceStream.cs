@@ -13,17 +13,31 @@ namespace OK.Bitter.Engine.Streams
         public string State => _socket.State.ToString();
 
         private SymbolModel _symbol;
-        private Action<PriceModel> _handler;
         private ClientWebSocket _socket;
+
+        private event EventHandler<PriceModel> _handler;
 
         private const string _socketUrlFormat = "wss://stream.binance.com:9443/ws/{0}@trade";
 
-        public Task InitAsync(SymbolModel symbol, Action<PriceModel> handler)
+        public Task InitAsync(SymbolModel symbol)
         {
             _symbol = symbol;
-            _handler = handler;
 
             _socket = new ClientWebSocket();
+
+            return Task.CompletedTask;
+        }
+
+        public Task SubscribeAsync(EventHandler<PriceModel> handler, CancellationToken cancellationToken = default)
+        {
+            _handler += handler;
+
+            return Task.CompletedTask;
+        }
+
+        public Task UnsubscribeAsync(EventHandler<PriceModel> handler, CancellationToken cancellationToken = default)
+        {
+            _handler -= handler;
 
             return Task.CompletedTask;
         }
@@ -62,7 +76,7 @@ namespace OK.Bitter.Engine.Streams
                     var price = Convert.ToDecimal(root.GetProperty("p").GetString());
                     var time = new DateTime(1970, 1, 1).AddMilliseconds(root.GetProperty("T").GetInt64());
 
-                    _handler?.Invoke(new PriceModel
+                    _handler?.Invoke(this, new PriceModel
                     {
                         SymbolId = _symbol.Id,
                         Date = time,

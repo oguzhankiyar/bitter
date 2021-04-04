@@ -9,8 +9,10 @@ namespace OK.Bitter.Engine.Streams
     {
         string State { get; }
 
-        Task InitAsync(SymbolModel symbol, Action<PriceModel> handler);
+        Task InitAsync(SymbolModel symbol);
         Task StartAsync(CancellationToken cancellationToken = default);
+        Task SubscribeAsync(EventHandler<PriceModel> handler, CancellationToken cancellationToken = default);
+        Task UnsubscribeAsync(EventHandler<PriceModel> handler, CancellationToken cancellationToken = default);
         Task StopAsync(CancellationToken cancellationToken = default);
     }
 }

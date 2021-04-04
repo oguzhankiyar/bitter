@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using OK.Bitter.Api.HostedServices;
 using OK.Bitter.Core.Managers;
+using OK.Bitter.Engine.Calculations;
 using OK.Bitter.Engine.Managers;
 using OK.Bitter.Engine.Streams;
 
@@ -18,6 +19,9 @@ namespace OK.Bitter.Engine
             services.AddSingleton<ISocketServiceManager, SocketServiceManager>();
 
             services.AddTransient<IPriceStream, PriceStream>();
+
+            services.AddTransient<PriceChangeCalculation>();
+            services.AddTransient<PriceAlertCalculation>();
 
             services.AddHostedService<SocketHostedService>();
             services.AddHostedService<SymbolHostedService>();

@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
-using OK.Bitter.Engine.Extensions;
+using OK.Bitter.Engine.Calculations;
 using OK.Bitter.Engine.Streams;
 
 namespace OK.Bitter.Engine.Managers
@@ -13,20 +14,13 @@ namespace OK.Bitter.Engine.Managers
     public class SocketServiceManager : ISocketServiceManager
     {
         public List<UserModel> Users { get; set; }
-
         public List<SymbolModel> Symbols { get; set; }
-
         public List<PriceModel> Prices { get; set; }
-
         public List<SubscriptionModel> SymbolSubscriptions { get; set; }
-
         public List<AlertModel> SymbolAlerts { get; set; }
-
         public IDictionary<string, IPriceStream> SymbolStreams { get; set; }
-
-        private IDictionary<string, object> symbolNotifyLockObjects = new Dictionary<string, object>();
-        private IDictionary<string, object> symbolAlertLockObjects = new Dictionary<string, object>();
-        private IDictionary<string, object> symbolPriceLockObjects = new Dictionary<string, object>();
+        public IDictionary<string, PriceChangeCalculation> SymbolPriceChangeCalculations { get; set; }
+        public IDictionary<string, PriceAlertCalculation> SymbolPriceAlertCalculations { get; set; }
 
         private readonly IUserManager _userManager;
         private readonly IAlertManager _alertManager;
@@ -56,6 +50,8 @@ namespace OK.Bitter.Engine.Managers
             SymbolSubscriptions = new List<SubscriptionModel>();
             SymbolAlerts = new List<AlertModel>();
             SymbolStreams = new Dictionary<string, IPriceStream>();
+            SymbolPriceChangeCalculations = new ConcurrentDictionary<string, PriceChangeCalculation>();
+            SymbolPriceAlertCalculations = new ConcurrentDictionary<string, PriceAlertCalculation>();
         }
 
         public void Subscribe(SymbolModel symbol)
@@ -65,115 +61,29 @@ namespace OK.Bitter.Engine.Managers
                 return;
             }
 
-            symbolNotifyLockObjects.Add(symbol.Id, new { });
-            symbolAlertLockObjects.Add(symbol.Id, new { });
-            symbolPriceLockObjects.Add(symbol.Id, new { });
-
             var stream = _serviceProvider.GetRequiredService<IPriceStream>();
 
             _ = Task.Run(async () =>
             {
-                await stream.InitAsync(symbol, message => OnPriceChanged(symbol, message));
-
+                await stream.InitAsync(symbol);
+                await stream.SubscribeAsync((_, price) =>
+                {
+                    if (SymbolPriceChangeCalculations.TryGetValue(symbol.Id, out PriceChangeCalculation calc))
+                    {
+                        _ = calc.CalculateAsync(price);
+                    }
+                });
+                await stream.SubscribeAsync((_, price) =>
+                {
+                    if (SymbolPriceAlertCalculations.TryGetValue(symbol.Id, out PriceAlertCalculation calc))
+                    {
+                        _ = calc.CalculateAsync(price);
+                    }
+                });
                 await stream.StartAsync();
 
                 SymbolStreams.Add(symbol.Id, stream);
             });
-        }
-
-        private void OnPriceChanged(SymbolModel symbol, PriceModel price)
-        {
-            AlertPriceAsync(symbol, price.Price);
-
-            var symbolPrice = Prices.FirstOrDefault(x => x.SymbolId == symbol.Id);
-
-            if (symbolPrice.Price == decimal.Zero)
-            {
-                symbolPrice.Date = price.Date;
-                symbolPrice.Price = price.Price;
-            }
-            else
-            {
-                var change = (price.Price - symbolPrice.Price) / symbolPrice.Price;
-
-                if (Math.Abs(change) >= symbol.MinimumChange)
-                {
-                    lock (symbolNotifyLockObjects[symbol.Id])
-                    {
-                        NotifyPriceAsync(symbol, price.Price);
-
-                        _priceManager.SaveLastPrice(symbol.Id, price.Price, change, symbolPrice.Date, DateTime.Now);
-
-                        symbolPrice.Price = price.Price;
-                        symbolPrice.Date = price.Date;
-                    }
-                }
-            }
-        }
-
-        private void AlertPriceAsync(SymbolModel symbol, decimal currentPrice)
-        {
-            Task.Run(() =>
-            {
-                var symbolAlerts = SymbolAlerts.Where(x => x.SymbolId == symbol.Id && ((x.LessValue.HasValue && x.LessValue.Value >= currentPrice) || (x.GreaterValue.HasValue && x.GreaterValue <= currentPrice)));
-
-                foreach (var symbolAlert in symbolAlerts)
-                {
-                    if (symbolAlert.LastAlertDate == null || (DateTime.Now - symbolAlert.LastAlertDate.Value).TotalMinutes > 5)
-                    {
-                        var user = Users.FirstOrDefault(x => x.Id == symbolAlert.UserId);
-
-                        string message = $"[ALERT] {symbol.FriendlyName}: {currentPrice}";
-
-                        _userManager.SendMessage(user.Id, message);
-
-                        _userManager.CallUser(symbolAlert.UserId, $"{symbol.FriendlyName} price is {currentPrice}");
-
-                        symbolAlert.LastAlertDate = DateTime.Now;
-
-                        _alertManager.UpdateAsAlerted(user.Id, symbol.Id, DateTime.Now);
-                    }
-                }
-            });
-        }
-
-        private void NotifyPriceAsync(SymbolModel symbol, decimal currentPrice)
-        {
-            var symbolSubscriptions = SymbolSubscriptions.Where(x => x.SymbolId == symbol.Id);
-
-            foreach (var symbolSubscription in symbolSubscriptions)
-            {
-                if (symbolSubscription.LastNotifiedPrice == decimal.Zero)
-                {
-                    symbolSubscription.LastNotifiedPrice = currentPrice;
-                    symbolSubscription.LastNotifiedDate = DateTime.Now;
-                }
-                else
-                {
-                    decimal userPrice = symbolSubscription.LastNotifiedPrice;
-                    decimal userChange = (currentPrice - userPrice) / userPrice;
-
-                    if (Math.Abs(userChange) >= symbolSubscription.MinimumChange)
-                    {
-                        var user = Users.FirstOrDefault(x => x.Id == symbolSubscription.UserId);
-
-                        string message = string.Format("{0}: {1} [{2}% {3}]",
-                            symbol.FriendlyName,
-                            currentPrice,
-                            (userChange * 100).ToString("+0.00;-0.00;0"),
-                            (DateTime.Now - symbolSubscription.LastNotifiedDate).ToIntervalString());
-
-                        _userManager.SendMessage(user.Id, message);
-
-                        // Console.WriteLine("Notified {0}: {1}", user.Id, message);
-
-                        symbolSubscription.LastNotifiedPrice = currentPrice;
-                        symbolSubscription.LastNotifiedDate = DateTime.Now;
-
-                        _subscriptionManager.UpdateAsNotified(user.Id, symbol.Id, currentPrice, DateTime.Now);
-                    }
-                }
-            }
         }
 
         public void SubscribeAll()
@@ -222,11 +132,49 @@ namespace OK.Bitter.Engine.Managers
 
         public void UpdateSubscriptions()
         {
+            var existings = SymbolSubscriptions;
+            foreach (var existing in existings)
+            {
+                if (SymbolPriceChangeCalculations.TryGetValue(existing.SymbolId, out PriceChangeCalculation calculation))
+                {
+                    calculation.UnsubscribeAsync(existing);
+                }
+            }
+
             SymbolSubscriptions = _subscriptionManager.GetSubscriptions();
+
+            foreach (var subscription in SymbolSubscriptions)
+            {
+                _ = Task.Run(async () =>
+                {
+                    var symbol = Symbols.FirstOrDefault(x => x.Id == subscription.SymbolId);
+
+                    if (SymbolPriceChangeCalculations.TryGetValue(symbol.Id, out PriceChangeCalculation existing))
+                    {
+                        await existing.SubscribeAsync(subscription);
+                    }
+                    else
+                    {
+                        var calculation = _serviceProvider.GetRequiredService<PriceChangeCalculation>();
+                        await calculation.InitAsync(symbol);
+                        await calculation.SubscribeAsync(subscription);
+                        SymbolPriceChangeCalculations.Add(symbol.Id, calculation);
+                    }
+                });
+            }
         }
 
         public void UpdateSubscription(string userId)
         {
+            var existings = SymbolSubscriptions.Where(x => x.UserId == userId);
+            foreach (var existing in existings)
+            {
+                if (SymbolPriceChangeCalculations.TryGetValue(existing.SymbolId, out PriceChangeCalculation calculation))
+                {
+                    calculation.UnsubscribeAsync(existing);
+                }
+            }
+
             SymbolSubscriptions.RemoveAll(x => x.UserId == userId);
 
             var subscriptions = _subscriptionManager.GetSubscriptionsByUser(userId);
@@ -234,16 +182,71 @@ namespace OK.Bitter.Engine.Managers
             foreach (var subscription in subscriptions)
             {
                 SymbolSubscriptions.Add(subscription);
+
+                _ = Task.Run(async () =>
+                {
+                    var symbol = Symbols.FirstOrDefault(x => x.Id == subscription.SymbolId);
+
+                    if (SymbolPriceChangeCalculations.TryGetValue(symbol.Id, out PriceChangeCalculation existing))
+                    {
+                        await existing.SubscribeAsync(subscription);
+                    }
+                    else
+                    {
+                        var calculation = _serviceProvider.GetRequiredService<PriceChangeCalculation>();
+                        await calculation.InitAsync(symbol);
+                        await calculation.SubscribeAsync(subscription);
+                        SymbolPriceChangeCalculations.Add(symbol.Id, calculation);
+                    }
+                });
             }
         }
 
         public void UpdateAlerts()
         {
+            var existings = SymbolAlerts;
+            foreach (var existing in existings)
+            {
+                if (SymbolPriceAlertCalculations.TryGetValue(existing.SymbolId, out PriceAlertCalculation calculation))
+                {
+                    calculation.UnsubscribeAsync(existing);
+                }
+            }
+
             SymbolAlerts = _alertManager.GetAlerts();
+
+            foreach (var alert in SymbolAlerts)
+            {
+                _ = Task.Run(async () =>
+                {
+                    var symbol = Symbols.FirstOrDefault(x => x.Id == alert.SymbolId);
+
+                    if (SymbolPriceAlertCalculations.TryGetValue(symbol.Id, out PriceAlertCalculation existing))
+                    {
+                        await existing.SubscribeAsync(alert);
+                    }
+                    else
+                    {
+                        var calculation = _serviceProvider.GetRequiredService<PriceAlertCalculation>();
+                        await calculation.InitAsync(symbol);
+                        await calculation.SubscribeAsync(alert);
+                        SymbolPriceAlertCalculations.Add(symbol.Id, calculation);
+                    }
+                });
+            }
         }
 
         public void UpdateAlert(string userId)
         {
+            var existings = SymbolAlerts.Where(x => x.UserId == userId);
+            foreach (var existing in existings)
+            {
+                if (SymbolPriceAlertCalculations.TryGetValue(existing.SymbolId, out PriceAlertCalculation calculation))
+                {
+                    calculation.UnsubscribeAsync(existing);
+                }
+            }
+
             SymbolAlerts.RemoveAll(x => x.UserId == userId);
 
             var alerts = _alertManager.GetAlertsByUser(userId);
@@ -251,6 +254,23 @@ namespace OK.Bitter.Engine.Managers
             foreach (var alert in alerts)
             {
                 SymbolAlerts.Add(alert);
+
+                _ = Task.Run(async () =>
+                {
+                    var symbol = Symbols.FirstOrDefault(x => x.Id == alert.SymbolId);
+
+                    if (SymbolPriceAlertCalculations.TryGetValue(symbol.Id, out PriceAlertCalculation existing))
+                    {
+                        await existing.SubscribeAsync(alert);
+                    }
+                    else
+                    {
+                        var calculation = _serviceProvider.GetRequiredService<PriceAlertCalculation>();
+                        await calculation.InitAsync(symbol);
+                        await calculation.SubscribeAsync(alert);
+                        SymbolPriceAlertCalculations.Add(symbol.Id, calculation);
+                    }
+                });
             }
         }
 
