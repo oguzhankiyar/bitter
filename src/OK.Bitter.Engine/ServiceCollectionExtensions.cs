@@ -30,6 +30,7 @@ namespace OK.Bitter.Engine
 
             services.AddTransient<PriceChangeCalculation>();
             services.AddTransient<PriceAlertCalculation>();
+            services.AddTransient<UserBalanceCalculation>();
             services.AddTransient<UserPnLCalculation>();
 
             services.AddHostedService<SocketHostedService>();
