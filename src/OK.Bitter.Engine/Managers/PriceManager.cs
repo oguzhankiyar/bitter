@@ -82,6 +82,12 @@ namespace OK.Bitter.Engine.Managers
             return true;
         }
 
+        public bool RemoveOldPrices(DateTime startDate)
+        {
+            _priceRepository.Delete(x => x.Date < startDate);
+            return true;
+        }
+
         private static decimal GetLatestPrice(SymbolModel symbol)
         {
             string url = "https://api.binance.com/api/v3/ticker/price?symbol=" + symbol.Name.Replace("|", string.Empty);

@@ -13,5 +13,6 @@ namespace OK.Bitter.Core.Repositories
         TEntity GetById(string id);
         TEntity Save(TEntity entity);
         void Delete(string id);
+        void Delete(Expression<Func<TEntity, bool>> predicate);
     }
 }

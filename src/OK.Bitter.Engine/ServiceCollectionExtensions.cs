@@ -35,6 +35,7 @@ namespace OK.Bitter.Engine
 
             services.AddHostedService<SocketHostedService>();
             services.AddHostedService<SymbolHostedService>();
+            services.AddHostedService<PriceHostedService>();
 
             return services;
         }

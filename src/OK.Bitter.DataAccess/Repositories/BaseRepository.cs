@@ -62,5 +62,10 @@ namespace OK.Bitter.DataAccess.Repositories
         {
             _collection.DeleteOne(x => x.Id.Equals(id));
         }
+
+        public void Delete(Expression<Func<TEntity, bool>> predicate)
+        {
+            _collection.DeleteMany(predicate);
+        }
     }
 }

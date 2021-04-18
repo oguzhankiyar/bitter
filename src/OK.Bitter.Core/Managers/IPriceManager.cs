@@ -9,5 +9,7 @@ namespace OK.Bitter.Core.Managers
         List<PriceModel> GetLastPrices();
 
         bool SaveLastPrice(string symbolId, decimal price, decimal change, DateTime lastChange, DateTime date);
+
+        bool RemoveOldPrices(DateTime startDate);
     }
 }
