@@ -65,5 +65,16 @@ namespace OK.Bitter.Engine.Stores
             _items.RemoveAll(x => x.UserId == subscription.UserId && x.SymbolId == subscription.SymbolId);
             OnDeleted?.Invoke(this, subscription);
         }
+
+        public void Delete(Func<SubscriptionModel, bool> filter = null)
+        {
+            var subscriptions = Get(filter);
+
+            foreach (var subscription in subscriptions)
+            {
+                _items.RemoveAll(x => x.UserId == subscription.UserId && x.SymbolId == subscription.SymbolId);
+                OnDeleted?.Invoke(this, subscription);
+            }
+        }
     }
 }

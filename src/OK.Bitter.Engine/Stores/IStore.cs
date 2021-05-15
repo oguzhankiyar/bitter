@@ -14,5 +14,6 @@ namespace OK.Bitter.Engine.Stores
         T Find(Func<T, bool> filter);
         void Upsert(T user);
         void Delete(T user);
+        void Delete(Func<T, bool> filter = null);
     }
 }

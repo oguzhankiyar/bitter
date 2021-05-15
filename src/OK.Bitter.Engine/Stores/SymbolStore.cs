@@ -65,5 +65,16 @@ namespace OK.Bitter.Engine.Stores
             _items.RemoveAll(x => x.Id == symbol.Id);
             OnDeleted?.Invoke(this, symbol);
         }
+
+        public void Delete(Func<SymbolModel, bool> filter = null)
+        {
+            var symbols = Get(filter);
+
+            foreach (var symbol in symbols)
+            {
+                _items.RemoveAll(x => x.Id == symbol.Id);
+                OnDeleted?.Invoke(this, symbol);
+            }
+        }
     }
 }

@@ -64,5 +64,16 @@ namespace OK.Bitter.Engine.Stores
             _items.RemoveAll(x => x.SymbolId == price.SymbolId);
             OnDeleted?.Invoke(this, price);
         }
+
+        public void Delete(Func<PriceModel, bool> filter = null)
+        {
+            var prices = Get(filter);
+
+            foreach (var price in prices)
+            {
+                _items.RemoveAll(x => x.SymbolId == price.SymbolId);
+                OnDeleted?.Invoke(this, price);
+            }
+        }
     }
 }
