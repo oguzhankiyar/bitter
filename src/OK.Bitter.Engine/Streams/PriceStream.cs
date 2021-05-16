@@ -12,14 +12,14 @@ namespace OK.Bitter.Engine.Streams
     {
         public string State => _socket.State.ToString();
 
-        private SymbolModel _symbol;
+        private string _symbol;
         private ClientWebSocket _socket;
 
         private event EventHandler<PriceModel> _handler;
 
         private const string _socketUrlFormat = "wss://stream.binance.com:9443/ws/{0}@trade";
 
-        public Task InitAsync(SymbolModel symbol)
+        public Task InitAsync( string symbol)
         {
             _symbol = symbol;
 
@@ -46,7 +46,7 @@ namespace OK.Bitter.Engine.Streams
         {
             Task.Factory.StartNew(async () =>
             {
-                var url = string.Format(_socketUrlFormat, _symbol.Name.Replace("|", string.Empty).ToLowerInvariant());
+                var url = string.Format(_socketUrlFormat, _symbol.ToLowerInvariant());
 
                 await _socket.ConnectAsync(new Uri(url), cancellationToken);
 
@@ -78,7 +78,6 @@ namespace OK.Bitter.Engine.Streams
 
                     _handler?.Invoke(this, new PriceModel
                     {
-                        SymbolId = _symbol.Id,
                         Date = time,
                         Price = price
                     });

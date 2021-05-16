@@ -90,9 +90,10 @@ namespace OK.Bitter.Engine.Calculations
 
                     if (Math.Abs(userChange) >= subscription.MinimumChange)
                     {
-                        var message = string.Format("{0}: {1} [{2}% {3}]",
-                            _symbol.FriendlyName,
+                        var message = string.Format("{0}: {1} {2} [{3}% {4}]",
+                            _symbol.Base,
                             price.Price,
+                            _symbol.Quote,
                             (userChange * 100).ToString("+0.00;-0.00;0"),
                             (DateTime.UtcNow - subscription.LastNotifiedDate).ToIntervalString());
 

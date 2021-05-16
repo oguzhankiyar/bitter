@@ -90,14 +90,29 @@ namespace OK.Bitter.Engine.Managers
 
         private static decimal GetLatestPrice(SymbolModel symbol)
         {
-            string url = "https://api.binance.com/api/v3/ticker/price?symbol=" + symbol.Name.Replace("|", string.Empty);
+            var symbolPrice = 1m;
 
-            string result = new HttpClient().GetAsync(url).Result.Content.ReadAsStringAsync().Result;
+            var route = JsonDocument.Parse(symbol.Route);
 
-            var json = JsonDocument.Parse(result);
-            var root = json.RootElement;
+            foreach (var item in route.RootElement.EnumerateArray())
+            {
+                var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
+                var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
+                var isReverse = item.GetProperty("IsReverse").GetBoolean();
 
-            return decimal.Parse(root.GetProperty("price").GetString());
+                var url = "https://api.binance.com/api/v3/ticker/price?symbol=" + string.Concat(baseCurrency, quoteCurrency);
+
+                var result = new HttpClient().GetAsync(url).Result.Content.ReadAsStringAsync().Result;
+
+                var json = JsonDocument.Parse(result);
+                var root = json.RootElement;
+
+                var price = decimal.Parse(root.GetProperty("price").GetString());
+
+                symbolPrice *= isReverse ? (1 / price) : price;
+            }
+
+            return symbolPrice;
         }
     }
 }

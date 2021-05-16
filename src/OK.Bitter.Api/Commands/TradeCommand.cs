@@ -49,7 +49,7 @@ namespace OK.Bitter.Api.Commands
                 {
                     var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
-                    var line = $"{item.Time.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()} #{item.Ticket}]";
+                    var line = $"{item.Time.ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()} #{item.Ticket}]";
 
                     lines.Add(line);
                 }

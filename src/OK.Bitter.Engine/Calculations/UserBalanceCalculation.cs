@@ -64,7 +64,7 @@ namespace OK.Bitter.Engine.Calculations
 
                 if (balance != 0)
                 {
-                    lines.Add($"{symbol.FriendlyName} | Volume: {openVolume} Balance: {balance}");
+                    lines.Add($"{symbol.Base} | Volume: {openVolume} Balance: {balance}");
                 }
 
                 totalBalance += balance;

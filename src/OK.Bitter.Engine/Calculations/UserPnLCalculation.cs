@@ -96,7 +96,7 @@ namespace OK.Bitter.Engine.Calculations
 
                 unrealized = openVolume * (price.Price - buyPrice);
 
-                lines.Add($"{symbol.FriendlyName} | Real: {realized} UnReal: {unrealized} Total: {realized + unrealized}");
+                lines.Add($"{symbol.Base} | Real: {realized} UnReal: {unrealized} Total: {realized + unrealized}");
 
                 totalPnL.Item1 += realized;
                 totalPnL.Item2 += unrealized;

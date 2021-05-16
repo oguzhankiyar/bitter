@@ -50,6 +50,10 @@ namespace OK.Bitter.Engine.Stores
             {
                 item.Name = symbol.Name;
                 item.FriendlyName = symbol.FriendlyName;
+                item.Base = symbol.Base;
+                item.Quote = symbol.Quote;
+                item.Route = symbol.Route;
+                item.Name = symbol.Name;
                 item.MinimumChange = symbol.MinimumChange;
                 OnUpdated?.Invoke(this, symbol);
             }

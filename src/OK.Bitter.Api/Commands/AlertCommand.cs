@@ -53,16 +53,16 @@ namespace OK.Bitter.Api.Commands
                 {
                     var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
-                    var line = $"{sym.FriendlyName} when";
+                    var line = $"{sym.Base} when";
 
                     if (item.LessValue.HasValue)
                     {
-                        line += $" less than {item.LessValue.Value}";
+                        line += $" less than {item.LessValue.Value} {sym.Quote}";
                     }
 
                     if (item.GreaterValue.HasValue)
                     {
-                        line += $" greater than {item.GreaterValue.Value}";
+                        line += $" greater than {item.GreaterValue.Value} {sym.Quote}";
                     }
 
                     lines.Add(line);
@@ -109,16 +109,16 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                var result = $"{symbolEntity.FriendlyName} when";
+                var result = $"{symbolEntity.Base} when";
 
                 if (alert.LessValue.HasValue)
                 {
-                    result += $" less than {alert.LessValue.Value}";
+                    result += $" less than {alert.LessValue.Value} {symbolEntity.Quote}";
                 }
 
                 if (alert.GreaterValue.HasValue)
                 {
-                    result += $" greater than {alert.GreaterValue.Value}";
+                    result += $" greater than {alert.GreaterValue.Value} {symbolEntity.Quote}";
                 }
 
                 await ReplyAsync(result);
