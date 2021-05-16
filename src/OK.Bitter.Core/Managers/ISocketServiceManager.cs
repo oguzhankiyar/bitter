@@ -7,7 +7,7 @@ namespace OK.Bitter.Core.Managers
     {
         void SubscribeAll();
         void UnsubscribeAll();
-        void Subscribe(string symbol);
+        void Subscribe(List<string> symbol);
         void ResetCache(string userId, string symbolId = null);
         List<string> CheckStatus();
         string CheckSymbolStatus(string symbolId);

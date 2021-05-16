@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -12,16 +14,17 @@ namespace OK.Bitter.Engine.Streams
     {
         public string State => _socket.State.ToString();
 
-        private string _symbol;
+        private List<string> _symbols;
         private ClientWebSocket _socket;
+        private Timer _timer;
 
         private event EventHandler<PriceModel> _handler;
 
-        private const string _socketUrlFormat = "wss://stream.binance.com:9443/ws/{0}@trade";
+        private const string _socketUrlFormat = "wss://stream.binance.com:9443/ws";
 
-        public Task InitAsync( string symbol)
+        public Task InitAsync(List<string> symbols)
         {
-            _symbol = symbol;
+            _symbols = symbols;
 
             _socket = new ClientWebSocket();
 
@@ -46,9 +49,13 @@ namespace OK.Bitter.Engine.Streams
         {
             Task.Factory.StartNew(async () =>
             {
-                var url = string.Format(_socketUrlFormat, _symbol.ToLowerInvariant());
+                var url = _socketUrlFormat;
 
                 await _socket.ConnectAsync(new Uri(url), cancellationToken);
+
+                var req = @"{ ""method"": ""SUBSCRIBE"", ""params"": [" + string.Join(",", _symbols.Take(4).Select(x => $@"""{x.ToLowerInvariant()}@aggTrade""")) + @"], ""id"": 1 }";
+                var bytes = Encoding.UTF8.GetBytes(req);
+                await _socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken);
 
                 while (!cancellationToken.IsCancellationRequested && _socket.State == WebSocketState.Open)
                 {
@@ -73,15 +80,37 @@ namespace OK.Bitter.Engine.Streams
                     var json = JsonDocument.Parse(msg);
                     var root = json.RootElement;
 
+                    if (root.TryGetProperty("result", out var elem))
+                    {
+                        continue;
+                    }
+
+                    var symbol = root.GetProperty("s").GetString();
                     var price = Convert.ToDecimal(root.GetProperty("p").GetString());
                     var time = new DateTime(1970, 1, 1).AddMilliseconds(root.GetProperty("T").GetInt64());
 
                     _handler?.Invoke(this, new PriceModel
                     {
+                        SymbolId = symbol,
                         Date = time,
                         Price = price
                     });
                 }
+            }, TaskCreationOptions.LongRunning);
+
+            Task.Factory.StartNew(() =>
+            {
+                if (_timer != null)
+                {
+                    _timer.Dispose();
+                    _timer = null;
+                }
+
+                _timer = new Timer(async (_) =>
+                {
+                    await StopAsync(cancellationToken);
+                    await StartAsync(cancellationToken);
+                }, null, TimeSpan.FromHours(4), TimeSpan.FromHours(4));
             }, TaskCreationOptions.LongRunning);
 
             return Task.CompletedTask;

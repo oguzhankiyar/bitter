@@ -193,9 +193,9 @@ namespace OK.Bitter.Engine.Managers
             return symbols;
         }
 
-        public void Subscribe(string symbol)
+        public void Subscribe(List<string> symbols)
         {
-            if (_streams.ContainsKey(symbol))
+            if (_streams.ContainsKey("ALL"))
             {
                 return;
             }
@@ -204,36 +204,36 @@ namespace OK.Bitter.Engine.Managers
 
             _ = Task.Run(async () =>
             {
-                await stream.InitAsync(symbol);
+                await stream.InitAsync(symbols);
                 await stream.SubscribeAsync((_, price) =>
                 {
-                    if (_symbolMap.TryGetValue(symbol, out var items))
+                    if (_symbolMap.TryGetValue(price.SymbolId, out var items))
                     {
                         foreach (var item in items)
                         {
                             if (_priceChangeCalculations.TryGetValue(item, out PriceChangeCalculation calc))
                             {
-                                _ = calc.CalculateAsync(symbol, price.Date, price.Price);
+                                _ = calc.CalculateAsync(price.SymbolId, price.Date, price.Price);
                             }
                         }
                     }
                 });
                 await stream.SubscribeAsync((_, price) =>
                 {
-                    if (_symbolMap.TryGetValue(symbol, out var items))
+                    if (_symbolMap.TryGetValue(price.SymbolId, out var items))
                     {
                         foreach (var item in items)
                         {
-                            if (_priceAlertCalculations.TryGetValue(symbol, out PriceAlertCalculation calc))
+                            if (_priceAlertCalculations.TryGetValue(item, out PriceAlertCalculation calc))
                             {
-                                _ = calc.CalculateAsync(symbol, price.Date, price.Price);
+                                _ = calc.CalculateAsync(price.SymbolId, price.Date, price.Price);
                             }
                         }
                     }
                 });
                 await stream.StartAsync();
 
-                _streams.Add(symbol, stream);
+                _streams.Add("ALL", stream);
             });
         }
 
@@ -259,7 +259,7 @@ namespace OK.Bitter.Engine.Managers
                 }
             }
 
-            uniques.ForEach(Subscribe);
+            Subscribe(uniques);
         }
 
         public void UnsubscribeAll()
