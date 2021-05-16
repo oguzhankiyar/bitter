@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
@@ -18,6 +19,7 @@ namespace OK.Bitter.Engine.Calculations
 
         private SymbolModel _symbol;
         private List<SubscriptionModel> _subscriptions;
+        private IDictionary<string, (decimal Price, bool IsReverse)> _routePrices;
 
         public PriceChangeCalculation(
             IUserManager userManager,
@@ -35,6 +37,18 @@ namespace OK.Bitter.Engine.Calculations
         {
             _symbol = symbol;
             _subscriptions = new List<SubscriptionModel>();
+            _routePrices = new Dictionary<string, (decimal Price, bool IsReverse)>();
+
+            var route = JsonDocument.Parse(_symbol.Route);
+
+            foreach (var item in route.RootElement.EnumerateArray())
+            {
+                var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
+                var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
+                var isReverse = item.GetProperty("IsReverse").GetBoolean();
+
+                _routePrices.Add(string.Concat(baseCurrency, quoteCurrency), (0, isReverse));
+            }
 
             return Task.CompletedTask;
         }
@@ -58,18 +72,40 @@ namespace OK.Bitter.Engine.Calculations
             return Task.CompletedTask;
         }
 
-        public Task CalculateAsync(PriceModel price)
+        public Task CalculateAsync(string symbol, DateTime date, decimal price)
         {
-            var last = _priceStore.Find(x => x.SymbolId == price.SymbolId);
+            if (_routePrices.TryGetValue(symbol, out var routePrice))
+            {
+                _routePrices[symbol] = (price, routePrice.IsReverse);
+            }
+
+            if (_routePrices.Any(x => x.Value.Price == decimal.Zero))
+            {
+                return Task.CompletedTask;
+            }
+
+            var symbolPrice = 1m;
+
+            foreach (var item in _routePrices)
+            {
+                symbolPrice *= item.Value.IsReverse ? (1 / item.Value.Price) : item.Value.Price;
+            }
+
+            var last = _priceStore.Find(x => x.SymbolId == _symbol.Id);
             if (last == null || last.Price == decimal.Zero)
             {
-                _priceStore.Upsert(price);
-                _priceManager.SaveLastPrice(_symbol.Id, price.Price, decimal.Zero, price.Date, DateTime.UtcNow);
+                _priceStore.Upsert(new PriceModel
+                {
+                    SymbolId = _symbol.Id,
+                    Price = symbolPrice,
+                    Date = date
+                });
+                _priceManager.SaveLastPrice(_symbol.Id, symbolPrice, decimal.Zero, date, DateTime.UtcNow);
 
                 return Task.CompletedTask;
             }
 
-            var change = Math.Abs((price.Price - last.Price) / last.Price);
+            var change = Math.Abs((symbolPrice - last.Price) / last.Price);
 
             if (change < _symbol.MinimumChange)
             {
@@ -80,35 +116,40 @@ namespace OK.Bitter.Engine.Calculations
             {
                 if (subscription.LastNotifiedPrice == decimal.Zero)
                 {
-                    subscription.LastNotifiedPrice = price.Price;
+                    subscription.LastNotifiedPrice = symbolPrice;
                     subscription.LastNotifiedDate = DateTime.UtcNow;
                 }
                 else
                 {
                     var userPrice = subscription.LastNotifiedPrice;
-                    var userChange = (price.Price - userPrice) / userPrice;
+                    var userChange = (symbolPrice - userPrice) / userPrice;
 
                     if (Math.Abs(userChange) >= subscription.MinimumChange)
                     {
                         var message = string.Format("{0}: {1} {2} [{3}% {4}]",
                             _symbol.Base,
-                            price.Price,
+                            symbolPrice,
                             _symbol.Quote,
                             (userChange * 100).ToString("+0.00;-0.00;0"),
                             (DateTime.UtcNow - subscription.LastNotifiedDate).ToIntervalString());
 
                         _userManager.SendMessage(subscription.UserId, message);
 
-                        subscription.LastNotifiedPrice = price.Price;
+                        subscription.LastNotifiedPrice = symbolPrice;
                         subscription.LastNotifiedDate = DateTime.UtcNow;
 
-                        _subscriptionManager.UpdateAsNotified(subscription.UserId, _symbol.Id, price.Price, DateTime.UtcNow);
+                        _subscriptionManager.UpdateAsNotified(subscription.UserId, _symbol.Id, symbolPrice, DateTime.UtcNow);
                     }
                 }
             }
 
-            _priceStore.Upsert(price);
-            _priceManager.SaveLastPrice(_symbol.Id, price.Price, change, price.Date, DateTime.UtcNow);
+            _priceStore.Upsert(new PriceModel
+            {
+                SymbolId = _symbol.Id,
+                Price = symbolPrice,
+                Date = date
+            });
+            _priceManager.SaveLastPrice(_symbol.Id, symbolPrice, change, date, DateTime.UtcNow);
 
             return Task.CompletedTask;
         }

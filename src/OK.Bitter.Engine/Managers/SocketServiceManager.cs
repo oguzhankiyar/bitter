@@ -20,6 +20,7 @@ namespace OK.Bitter.Engine.Managers
         private readonly IStore<AlertModel> _alertStore;
         private readonly IServiceProvider _serviceProvider;
 
+        private readonly IDictionary<string, List<string>> _symbolMap;
         private readonly IDictionary<string, IPriceStream> _streams;
         private readonly IDictionary<string, PriceChangeCalculation> _priceChangeCalculations;
         private readonly IDictionary<string, PriceAlertCalculation> _priceAlertCalculations;
@@ -35,14 +36,54 @@ namespace OK.Bitter.Engine.Managers
             _alertStore = alertStore ?? throw new ArgumentNullException(nameof(alertStore));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
+            _symbolMap = new Dictionary<string, List<string>>();
             _streams = new Dictionary<string, IPriceStream>();
             _priceChangeCalculations = new ConcurrentDictionary<string, PriceChangeCalculation>();
             _priceAlertCalculations = new ConcurrentDictionary<string, PriceAlertCalculation>();
 
+            Action reploadSymbolMap = () =>
+            {
+                _symbolStore.Get()
+                    .ForEach(x =>
+                    {
+                        var symbolName = string.Concat(x.Base, x.Quote);
+
+                        var relateds = GetRelatedSymbols(x.Route);
+
+                        foreach (var related in relateds)
+                        {
+                            if (_symbolMap.TryGetValue(related, out var items))
+                            {
+                                if (!items.Contains(symbolName))
+                                {
+                                    items.Add(symbolName);
+                                }
+                            }
+                            else
+                            {
+                                _symbolMap.Add(related, new List<string> { symbolName });
+                            }
+                        }
+                    });
+            };
+
+            _symbolStore.OnInserted += (_, symbol) =>
+            {
+                reploadSymbolMap();
+            };
+
+            _symbolStore.OnUpdated += (_, symbol) =>
+            {
+                reploadSymbolMap();
+            };
+
+            _symbolStore.OnDeleted += (_, symbol) =>
+            {
+                reploadSymbolMap();
+            };
+
             _subscriptionStore.OnInserted += async (_, subscription) =>
             {
-                // TODO: Multiple mapping according to route
-
                 var symbol = _symbolStore.Find(x => x.Id == subscription.SymbolId);
 
                 if (_priceChangeCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceChangeCalculation existing))
@@ -60,8 +101,6 @@ namespace OK.Bitter.Engine.Managers
 
             _subscriptionStore.OnUpdated += async (_, subscription) =>
             {
-                // TODO: Multiple mapping according to route
-
                 var symbol = _symbolStore.Find(x => x.Id == subscription.SymbolId);
 
                 if (_priceChangeCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceChangeCalculation existing))
@@ -79,8 +118,6 @@ namespace OK.Bitter.Engine.Managers
 
             _subscriptionStore.OnDeleted += async (_, subscription) =>
             {
-                // TODO: Multiple mapping according to route
-
                 var symbol = _symbolStore.Find(x => x.Id == subscription.SymbolId);
 
                 if (_priceChangeCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceChangeCalculation calculation))
@@ -91,8 +128,6 @@ namespace OK.Bitter.Engine.Managers
 
             _alertStore.OnInserted += async (_, alert) =>
             {
-                // TODO: Multiple mapping according to route
-
                 var symbol = _symbolStore.Find(x => x.Id == alert.SymbolId);
 
                 if (_priceAlertCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceAlertCalculation existing))
@@ -110,8 +145,6 @@ namespace OK.Bitter.Engine.Managers
 
             _alertStore.OnUpdated += async (_, alert) =>
             {
-                // TODO: Multiple mapping according to route
-
                 var symbol = _symbolStore.Find(x => x.Id == alert.SymbolId);
 
                 if (_priceAlertCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceAlertCalculation existing))
@@ -129,8 +162,6 @@ namespace OK.Bitter.Engine.Managers
 
             _alertStore.OnDeleted += async (_, alert) =>
             {
-                // TODO: Multiple mapping according to route
-
                 var symbol = _symbolStore.Find(x => x.Id == alert.SymbolId);
 
                 if (_priceAlertCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceAlertCalculation calculation))
@@ -138,6 +169,28 @@ namespace OK.Bitter.Engine.Managers
                     await calculation.UnsubscribeAsync(alert);
                 }
             };
+        }
+
+        private List<string> GetRelatedSymbols(string route)
+        {
+            var symbols = new List<string>();
+
+            var json = JsonDocument.Parse(route);
+
+            foreach (var item in json.RootElement.EnumerateArray())
+            {
+                var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
+                var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
+
+                var symbolName = string.Concat(baseCurrency, quoteCurrency);
+
+                if (!symbols.Contains(symbolName))
+                {
+                    symbols.Add(symbolName);
+                }
+            }
+
+            return symbols;
         }
 
         public void Subscribe(string symbol)
@@ -154,20 +207,28 @@ namespace OK.Bitter.Engine.Managers
                 await stream.InitAsync(symbol);
                 await stream.SubscribeAsync((_, price) =>
                 {
-                    // TODO: Multiple mapping according to route
-
-                    if (_priceChangeCalculations.TryGetValue(symbol, out PriceChangeCalculation calc))
+                    if (_symbolMap.TryGetValue(symbol, out var items))
                     {
-                        _ = calc.CalculateAsync(price);
+                        foreach (var item in items)
+                        {
+                            if (_priceChangeCalculations.TryGetValue(item, out PriceChangeCalculation calc))
+                            {
+                                _ = calc.CalculateAsync(symbol, price.Date, price.Price);
+                            }
+                        }
                     }
                 });
                 await stream.SubscribeAsync((_, price) =>
                 {
-                    // TODO: Multiple mapping according to route
-
-                    if (_priceAlertCalculations.TryGetValue(symbol, out PriceAlertCalculation calc))
+                    if (_symbolMap.TryGetValue(symbol, out var items))
                     {
-                        _ = calc.CalculateAsync(price);
+                        foreach (var item in items)
+                        {
+                            if (_priceAlertCalculations.TryGetValue(symbol, out PriceAlertCalculation calc))
+                            {
+                                _ = calc.CalculateAsync(symbol, price.Date, price.Price);
+                            }
+                        }
                     }
                 });
                 await stream.StartAsync();

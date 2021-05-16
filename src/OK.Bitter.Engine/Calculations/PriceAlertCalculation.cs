@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
@@ -14,6 +15,7 @@ namespace OK.Bitter.Engine.Calculations
 
         private SymbolModel _symbol;
         private List<AlertModel> _alerts;
+        private IDictionary<string, (decimal Price, bool IsReverse)> _routePrices;
 
         public PriceAlertCalculation(
             IUserManager userManager,
@@ -27,6 +29,18 @@ namespace OK.Bitter.Engine.Calculations
         {
             _symbol = symbol;
             _alerts = new List<AlertModel>();
+            _routePrices = new Dictionary<string, (decimal Price, bool IsReverse)>();
+
+            var route = JsonDocument.Parse(_symbol.Route);
+
+            foreach (var item in route.RootElement.EnumerateArray())
+            {
+                var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
+                var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
+                var isReverse = item.GetProperty("IsReverse").GetBoolean();
+
+                _routePrices.Add(string.Concat(baseCurrency, quoteCurrency), (0, isReverse));
+            }
 
             return Task.CompletedTask;
         }
@@ -50,19 +64,36 @@ namespace OK.Bitter.Engine.Calculations
             return Task.CompletedTask;
         }
 
-        public Task CalculateAsync(PriceModel price)
+        public Task CalculateAsync(string symbol, DateTime date, decimal price)
         {
-            var alerts = _alerts.Where(x => (x.LessValue.HasValue && x.LessValue.Value >= price.Price) || (x.GreaterValue.HasValue && x.GreaterValue <= price.Price));
+            if (_routePrices.TryGetValue(symbol, out var routePrice))
+            {
+                _routePrices[symbol] = (price, routePrice.IsReverse);
+            }
+
+            if (_routePrices.Any(x => x.Value.Price == decimal.Zero))
+            {
+                return Task.CompletedTask;
+            }
+
+            var symbolPrice = 1m;
+
+            foreach (var item in _routePrices)
+            {
+                symbolPrice *= item.Value.IsReverse ? (1 / item.Value.Price) : item.Value.Price;
+            }
+
+            var alerts = _alerts.Where(x => (x.LessValue.HasValue && x.LessValue.Value >= symbolPrice) || (x.GreaterValue.HasValue && x.GreaterValue <= symbolPrice));
 
             foreach (var alert in alerts)
             {
                 if (alert.LastAlertDate == null || (DateTime.UtcNow - alert.LastAlertDate.Value).TotalMinutes > 5)
                 {
-                    var message = $"[ALERT] {_symbol.FriendlyName}: {price.Price}";
+                    var message = $"[ALERT] {_symbol.FriendlyName}: {symbolPrice}";
 
                     _userManager.SendMessage(alert.UserId, message);
 
-                    _userManager.CallUser(alert.UserId, $"{_symbol.FriendlyName} price is {price.Price}");
+                    _userManager.CallUser(alert.UserId, $"{_symbol.FriendlyName} price is {symbolPrice}");
 
                     alert.LastAlertDate = DateTime.UtcNow;
 
