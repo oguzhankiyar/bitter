@@ -21,8 +21,8 @@ namespace OK.Bitter.Api.Commands
 
             if (User == null)
             {
-                lines.Add("Authenticate the bot");
-                lines.Add("- auth <password>");
+                lines.Add("Start the bot");
+                lines.Add("- start");
                 lines.Add(string.Empty);
             }
             else

@@ -11,7 +11,7 @@ using OK.GramHook;
 
 namespace OK.Bitter.Api.Commands
 {
-    [Command("/start")]
+    [Command("/start|start")]
     public class StartCommand : BaseCommand
     {
         private readonly IUserRepository _userRepository;
