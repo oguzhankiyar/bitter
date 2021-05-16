@@ -146,10 +146,10 @@ namespace OK.Bitter.Engine.Managers
 
             foreach (var item in array)
             {
-                var baseCurrency = item.GetProperty("symbol").GetString();
-                var quoteCurrency = decimal.Parse(item.GetProperty("price").GetString());
+                var symbol = item.GetProperty("symbol").GetString();
+                var price = decimal.Parse(item.GetProperty("price").GetString());
 
-                list.Add((baseCurrency, quoteCurrency));
+                list.Add((symbol, price));
             }
 
             return list;

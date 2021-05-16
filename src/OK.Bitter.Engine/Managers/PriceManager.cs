@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading.Tasks;
 using OK.Bitter.Common.Entities;
 using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
@@ -36,6 +37,7 @@ namespace OK.Bitter.Engine.Managers
                 .ToList();
 
             var symbols = _symbolManager.GetSymbols();
+            var prices = GetPricesAsync().Result;
 
             foreach (var symbol in symbols)
             {
@@ -43,9 +45,15 @@ namespace OK.Bitter.Engine.Managers
 
                 if (lastPrice == null)
                 {
-                    string symbolId = symbol.Id;
-                    decimal price = GetLatestPrice(symbol);
-                    DateTime date = DateTime.Now;
+                    var latest = prices.FirstOrDefault(x => x.Symbol == string.Concat(symbol.Base, symbol.Quote));
+                    if (latest == default)
+                    {
+                        continue;
+                    }
+
+                    var symbolId = symbol.Id;
+                    var price = latest.Price;
+                    var date = DateTime.UtcNow;
 
                     lastPrices.Add(new PriceModel()
                     {
@@ -54,7 +62,7 @@ namespace OK.Bitter.Engine.Managers
                         Date = date
                     });
 
-                    SaveLastPrice(symbolId, price, 0, DateTime.Now, date);
+                    SaveLastPrice(symbolId, price, 0, date, date);
                 }
             }
 
@@ -88,31 +96,30 @@ namespace OK.Bitter.Engine.Managers
             return true;
         }
 
-        private static decimal GetLatestPrice(SymbolModel symbol)
+        public async Task<IEnumerable<(string Symbol, decimal Price)>> GetPricesAsync()
         {
-            var symbolPrice = 1m;
+            var list = new List<(string Symbol, decimal Price)>();
 
-            var route = JsonDocument.Parse(symbol.Route);
+            var url = "https://api.binance.com/api/v3/ticker/price";
 
-            foreach (var item in route.RootElement.EnumerateArray())
+            var response = await new HttpClient().GetAsync(url);
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            var json = JsonDocument.Parse(content);
+            var root = json.RootElement;
+
+            var array = root.EnumerateArray();
+
+            foreach (var item in array)
             {
-                var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
-                var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
-                var isReverse = item.GetProperty("IsReverse").GetBoolean();
+                var symbol = item.GetProperty("symbol").GetString();
+                var price = decimal.Parse(item.GetProperty("price").GetString());
 
-                var url = "https://api.binance.com/api/v3/ticker/price?symbol=" + string.Concat(baseCurrency, quoteCurrency);
-
-                var result = new HttpClient().GetAsync(url).Result.Content.ReadAsStringAsync().Result;
-
-                var json = JsonDocument.Parse(result);
-                var root = json.RootElement;
-
-                var price = decimal.Parse(root.GetProperty("price").GetString());
-
-                symbolPrice *= isReverse ? (1 / price) : price;
+                list.Add((symbol, price));
             }
 
-            return symbolPrice;
+            return list;
         }
     }
 }
