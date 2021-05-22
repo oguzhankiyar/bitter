@@ -193,9 +193,9 @@ namespace OK.Bitter.Engine.Managers
             return symbols;
         }
 
-        public void Subscribe(List<string> symbols)
+        public void Subscribe(string symbol)
         {
-            if (_streams.ContainsKey("ALL"))
+            if (_streams.ContainsKey(symbol))
             {
                 return;
             }
@@ -204,7 +204,7 @@ namespace OK.Bitter.Engine.Managers
 
             _ = Task.Run(async () =>
             {
-                await stream.InitAsync(symbols);
+                await stream.InitAsync(symbol);
                 await stream.SubscribeAsync((_, price) =>
                 {
                     if (_symbolMap.TryGetValue(price.SymbolId, out var items))
@@ -233,7 +233,7 @@ namespace OK.Bitter.Engine.Managers
                 });
                 await stream.StartAsync();
 
-                _streams.Add("ALL", stream);
+                _streams.Add(symbol, stream);
             });
         }
 
@@ -259,7 +259,7 @@ namespace OK.Bitter.Engine.Managers
                 }
             }
 
-            Subscribe(uniques);
+            uniques.AsParallel().ForAll(Subscribe);
         }
 
         public void UnsubscribeAll()

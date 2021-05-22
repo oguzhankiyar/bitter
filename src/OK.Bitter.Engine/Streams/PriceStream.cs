@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -14,17 +12,17 @@ namespace OK.Bitter.Engine.Streams
     {
         public string State => _socket.State.ToString();
 
-        private List<string> _symbols;
+        private string _symbol;
         private ClientWebSocket _socket;
         private Timer _timer;
 
         private event EventHandler<PriceModel> _handler;
 
-        private const string _socketUrlFormat = "wss://stream.binance.com:9443/ws";
+        private const string _socketUrlFormat = "wss://stream.binance.com:9443/ws/{0}@trade";
 
-        public Task InitAsync(List<string> symbols)
+        public Task InitAsync(string symbol)
         {
-            _symbols = symbols;
+            _symbol = symbol;
 
             _socket = new ClientWebSocket();
 
@@ -49,13 +47,9 @@ namespace OK.Bitter.Engine.Streams
         {
             Task.Factory.StartNew(async () =>
             {
-                var url = _socketUrlFormat;
+                var url = string.Format(_socketUrlFormat, _symbol.ToLowerInvariant());
 
                 await _socket.ConnectAsync(new Uri(url), cancellationToken);
-
-                var req = @"{ ""method"": ""SUBSCRIBE"", ""params"": [" + string.Join(",", _symbols.Take(4).Select(x => $@"""{x.ToLowerInvariant()}@aggTrade""")) + @"], ""id"": 1 }";
-                var bytes = Encoding.UTF8.GetBytes(req);
-                await _socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken);
 
                 while (!cancellationToken.IsCancellationRequested && _socket.State == WebSocketState.Open)
                 {
@@ -79,11 +73,6 @@ namespace OK.Bitter.Engine.Streams
 
                     var json = JsonDocument.Parse(msg);
                     var root = json.RootElement;
-
-                    if (root.TryGetProperty("result", out var elem))
-                    {
-                        continue;
-                    }
 
                     var symbol = root.GetProperty("s").GetString();
                     var price = Convert.ToDecimal(root.GetProperty("p").GetString());

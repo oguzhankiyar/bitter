@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using OK.Bitter.Common.Models;
@@ -10,7 +9,7 @@ namespace OK.Bitter.Engine.Streams
     {
         string State { get; }
 
-        Task InitAsync(List<string> symbols);
+        Task InitAsync(string symbol);
         Task StartAsync(CancellationToken cancellationToken = default);
         Task SubscribeAsync(EventHandler<PriceModel> handler, CancellationToken cancellationToken = default);
         Task UnsubscribeAsync(EventHandler<PriceModel> handler, CancellationToken cancellationToken = default);
