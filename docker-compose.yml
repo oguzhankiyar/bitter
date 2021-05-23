@@ -9,16 +9,9 @@ services:
     ports:
       - '3010:80'
     networks:
-      - nginxproxy_network
-    volumes:
-      - nginxproxy_volume:/proxy_confs
+      - nginx
 
 networks:
-  nginxproxy_network:
+  nginx:
     external:
-      name: nginxproxy_network
-
-volumes:
-  nginxproxy_volume:
-    external:
-      name: nginxproxy_volume
+      name: nginx
