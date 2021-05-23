@@ -244,6 +244,13 @@ namespace OK.Bitter.Engine.Managers
 
             foreach (var symbol in symbols)
             {
+                if (!_priceChangeCalculations.ContainsKey(string.Concat(symbol.Base, symbol.Quote)))
+                {
+                    var calculation = _serviceProvider.GetRequiredService<PriceChangeCalculation>();
+                    calculation.InitAsync(symbol).Wait();
+                    _priceChangeCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
+                }
+
                 var route = JsonDocument.Parse(symbol.Route);
 
                 foreach (var item in route.RootElement.EnumerateArray())
