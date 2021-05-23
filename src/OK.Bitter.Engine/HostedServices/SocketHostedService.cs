@@ -15,7 +15,7 @@ namespace OK.Bitter.Api.HostedServices
         private readonly IStore<PriceModel> _priceStore;
         private readonly IStore<SubscriptionModel> _subscriptionStore;
         private readonly IStore<AlertModel> _alertStore;
-        private readonly ISocketServiceManager _socketServiceManager;
+        private readonly ISocketManager _socketManager;
 
         public SocketHostedService(
             IStore<UserModel> userStore,
@@ -23,50 +23,30 @@ namespace OK.Bitter.Api.HostedServices
             IStore<PriceModel> priceStore,
             IStore<SubscriptionModel> subscriptionStore,
             IStore<AlertModel> alertStore,
-            ISocketServiceManager socketServiceManager)
+            ISocketManager socketManager)
         {
             _userStore = userStore ?? throw new ArgumentNullException(nameof(userStore));
             _symbolStore = symbolStore ?? throw new ArgumentNullException(nameof(symbolStore));
             _priceStore = priceStore ?? throw new ArgumentNullException(nameof(priceStore));
             _subscriptionStore = subscriptionStore ?? throw new ArgumentNullException(nameof(subscriptionStore));
             _alertStore = alertStore ?? throw new ArgumentNullException(nameof(alertStore));
-            _socketServiceManager = socketServiceManager ?? throw new ArgumentNullException(nameof(socketServiceManager));
+            _socketManager = socketManager ?? throw new ArgumentNullException(nameof(socketManager));
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            try
-            {
-                await Task.Run(() =>
-                {
-                    _userStore.Init();
-                    _symbolStore.Init();
-                    _priceStore.Init();
-                    _subscriptionStore.Init();
-                    _alertStore.Init();
+            _userStore.Init();
+            _symbolStore.Init();
+            _priceStore.Init();
+            _subscriptionStore.Init();
+            _alertStore.Init();
 
-                    _socketServiceManager.SubscribeAll();
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
+            await _socketManager.SubscribeAsync();
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            try
-            {
-                await Task.Run(() =>
-                {
-                    _socketServiceManager.UnsubscribeAll();
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
+            await _socketManager.UnsubscribeAsync();
         }
     }
 }

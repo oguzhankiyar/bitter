@@ -1,13 +1,12 @@
 ﻿using System.Collections.Generic;
-using OK.Bitter.Common.Models;
+using System.Threading.Tasks;
 
 namespace OK.Bitter.Core.Managers
 {
-    public interface ISocketServiceManager
+    public interface ISocketManager
     {
-        void SubscribeAll();
-        void UnsubscribeAll();
-        void Subscribe(string symbol);
+        Task SubscribeAsync();
+        Task UnsubscribeAsync();
         void ResetCache(string userId, string symbolId = null);
         List<string> CheckStatus();
         string CheckSymbolStatus(string symbolId);

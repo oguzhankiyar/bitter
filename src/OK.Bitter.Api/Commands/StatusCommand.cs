@@ -14,17 +14,17 @@ namespace OK.Bitter.Api.Commands
     {
         private readonly ISymbolRepository _symbolRepository;
         private readonly IMessageService _messageService;
-        private readonly ISocketServiceManager _socketServiceManager;
+        private readonly ISocketManager _socketManager;
 
         public StatusCommand(
             ISymbolRepository symbolRepository,
             IMessageService messageService,
-            ISocketServiceManager socketServiceManager,
+            ISocketManager socketManager,
             IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _symbolRepository = symbolRepository ?? throw new ArgumentNullException(nameof(symbolRepository));
             _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
-            _socketServiceManager = socketServiceManager ?? throw new ArgumentNullException(nameof(socketServiceManager));
+            _socketManager = socketManager ?? throw new ArgumentNullException(nameof(socketManager));
         }
 
         [CommandCase("get", "{symbol}")]
@@ -39,7 +39,7 @@ namespace OK.Bitter.Api.Commands
 
             if (symbol == "all")
             {
-                var lines = _socketServiceManager.CheckStatus();
+                var lines = _socketManager.CheckStatus();
 
                 var skip = 0;
                 var take = 25;
@@ -64,7 +64,7 @@ namespace OK.Bitter.Api.Commands
                 return;
             }
 
-            var symbolStatus = _socketServiceManager.CheckSymbolStatus(symbolEntity.Id);
+            var symbolStatus = _socketManager.CheckSymbolStatus(symbolEntity.Id);
 
             await ReplyAsync(symbolStatus);
         }

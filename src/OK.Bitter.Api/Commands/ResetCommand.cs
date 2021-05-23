@@ -11,15 +11,15 @@ namespace OK.Bitter.Api.Commands
     public class ResetCommand : BaseCommand
     {
         private readonly ISymbolRepository _symbolRepository;
-        private readonly ISocketServiceManager _socketServiceManager;
+        private readonly ISocketManager _socketServiceManager;
 
         public ResetCommand(
             ISymbolRepository symbolRepository,
-            ISocketServiceManager socketServiceManager,
+            ISocketManager socketManager,
             IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _symbolRepository = symbolRepository ?? throw new ArgumentNullException(nameof(symbolRepository));
-            _socketServiceManager = socketServiceManager ?? throw new ArgumentNullException(nameof(socketServiceManager));
+            _socketServiceManager = socketManager ?? throw new ArgumentNullException(nameof(socketManager));
         }
 
         [CommandCase("{symbol}")]

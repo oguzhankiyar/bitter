@@ -18,7 +18,7 @@ namespace OK.Bitter.Engine
             services.AddTransient<ISubscriptionManager, SubscriptionManager>();
             services.AddTransient<ISymbolManager, SymbolManager>();
             services.AddTransient<IUserManager, UserManager>();
-            services.AddSingleton<ISocketServiceManager, SocketServiceManager>();
+            services.AddSingleton<ISocketManager, SocketManager>();
 
             services.AddSingleton<IStore<UserModel>, UserStore>();
             services.AddSingleton<IStore<SymbolModel>, SymbolStore>();

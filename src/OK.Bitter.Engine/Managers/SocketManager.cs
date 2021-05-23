@@ -13,7 +13,7 @@ using OK.Bitter.Engine.Streams;
 
 namespace OK.Bitter.Engine.Managers
 {
-    public class SocketServiceManager : ISocketServiceManager
+    public class SocketManager : ISocketManager
     {
         private readonly IStore<SymbolModel> _symbolStore;
         private readonly IStore<SubscriptionModel> _subscriptionStore;
@@ -25,7 +25,7 @@ namespace OK.Bitter.Engine.Managers
         private readonly IDictionary<string, PriceChangeCalculation> _priceChangeCalculations;
         private readonly IDictionary<string, PriceAlertCalculation> _priceAlertCalculations;
 
-        public SocketServiceManager(
+        public SocketManager(
             IStore<SymbolModel> symbolStore,
             IStore<SubscriptionModel> subscriptionStore,
             IStore<AlertModel> alertStore,
@@ -193,18 +193,45 @@ namespace OK.Bitter.Engine.Managers
             return symbols;
         }
 
-        public void Subscribe(string symbol)
+        public async Task SubscribeAsync()
         {
-            if (string.IsNullOrEmpty(symbol) || _streams.ContainsKey(symbol))
+            var uniques = new List<string>();
+            var symbols = _symbolStore.Get();
+
+            foreach (var symbol in symbols)
             {
-                return;
+                if (!_priceChangeCalculations.ContainsKey(string.Concat(symbol.Base, symbol.Quote)))
+                {
+                    var calculation = _serviceProvider.GetRequiredService<PriceChangeCalculation>();
+                    await calculation.InitAsync(symbol);
+                    _priceChangeCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
+                }
+
+                var route = JsonDocument.Parse(symbol.Route);
+
+                foreach (var item in route.RootElement.EnumerateArray())
+                {
+                    var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
+                    var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
+                    var symbolName = string.Concat(baseCurrency, quoteCurrency);
+
+                    if (!uniques.Contains(symbolName))
+                    {
+                        uniques.Add(symbolName);
+                    }
+                }
             }
 
-            var stream = _serviceProvider.GetRequiredService<IPriceStream>();
-
-            _ = Task.Run(async () =>
+            foreach (var unique in uniques)
             {
-                await stream.InitAsync(symbol);
+                if (_streams.ContainsKey(unique))
+                {
+                    continue;
+                }
+
+                var stream = _serviceProvider.GetRequiredService<IPriceStream>();
+
+                await stream.InitAsync(unique);
                 await stream.SubscribeAsync((_, price) =>
                 {
                     if (_symbolMap.TryGetValue(price.SymbolId, out var items))
@@ -233,48 +260,18 @@ namespace OK.Bitter.Engine.Managers
                 });
                 await stream.StartAsync();
 
-                _streams.Add(symbol, stream);
-            });
-        }
-
-        public void SubscribeAll()
-        {
-            var uniques = new List<string>();
-            var symbols = _symbolStore.Get();
-
-            foreach (var symbol in symbols)
-            {
-                if (!_priceChangeCalculations.ContainsKey(string.Concat(symbol.Base, symbol.Quote)))
-                {
-                    var calculation = _serviceProvider.GetRequiredService<PriceChangeCalculation>();
-                    calculation.InitAsync(symbol).Wait();
-                    _priceChangeCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
-                }
-
-                var route = JsonDocument.Parse(symbol.Route);
-
-                foreach (var item in route.RootElement.EnumerateArray())
-                {
-                    var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
-                    var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
-                    var symbolName = string.Concat(baseCurrency, quoteCurrency);
-
-                    if (!uniques.Contains(symbolName))
-                    {
-                        uniques.Add(symbolName);
-                    }
-                }
+                _streams.Add(unique, stream);
             }
-
-            uniques.AsParallel().ForAll(Subscribe);
         }
 
-        public void UnsubscribeAll()
+        public Task UnsubscribeAsync()
         {
             _streams.Values.ToList().ForEach(async stream =>
             {
                 await stream.StopAsync();
             });
+
+            return Task.CompletedTask;
         }
 
         public void ResetCache(string userId, string symbolId = null)
