@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using OK.Bitter.Common.Models;
@@ -14,7 +15,7 @@ namespace OK.Bitter.Engine.Stores
 
         private readonly ISymbolManager _symbolManager;
 
-        private List<SymbolModel> _items = new List<SymbolModel>();
+        private ConcurrentBag<SymbolModel> _items = new ConcurrentBag<SymbolModel>();
 
         public SymbolStore(ISymbolManager symbolManager)
         {
@@ -32,7 +33,7 @@ namespace OK.Bitter.Engine.Stores
         {
             if (expression == null)
             {
-                return _items;
+                return _items.ToList();
             }
 
             return _items.Where(expression).ToList();
@@ -66,7 +67,10 @@ namespace OK.Bitter.Engine.Stores
 
         public void Delete(SymbolModel symbol)
         {
-            _items.RemoveAll(x => x.Id == symbol.Id);
+            var items = _items.ToList();
+            items.RemoveAll(x => x.Id == symbol.Id);
+            _items = new ConcurrentBag<SymbolModel>(items);
+
             OnDeleted?.Invoke(this, symbol);
         }
 
@@ -76,7 +80,10 @@ namespace OK.Bitter.Engine.Stores
 
             foreach (var symbol in symbols)
             {
-                _items.RemoveAll(x => x.Id == symbol.Id);
+                var items = _items.ToList();
+                items.RemoveAll(x => x.Id == symbol.Id);
+                _items = new ConcurrentBag<SymbolModel>(items);
+
                 OnDeleted?.Invoke(this, symbol);
             }
         }

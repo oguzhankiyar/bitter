@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using OK.Bitter.Common.Models;
@@ -14,7 +15,7 @@ namespace OK.Bitter.Engine.Stores
 
         private readonly IAlertManager _alertManager;
 
-        private List<AlertModel> _items = new List<AlertModel>();
+        private ConcurrentBag<AlertModel> _items = new ConcurrentBag<AlertModel>();
 
         public AlertStore(IAlertManager alertManager)
         {
@@ -32,7 +33,7 @@ namespace OK.Bitter.Engine.Stores
         {
             if (expression == null)
             {
-                return _items;
+                return _items.ToList();
             }
 
             return _items.Where(expression).ToList();
@@ -62,7 +63,10 @@ namespace OK.Bitter.Engine.Stores
 
         public void Delete(AlertModel alert)
         {
-            _items.RemoveAll(x => x.UserId == alert.UserId && x.SymbolId == alert.SymbolId);
+            var items = _items.ToList();
+            items.RemoveAll(x => x.UserId == alert.UserId && x.SymbolId == alert.SymbolId);
+            _items = new ConcurrentBag<AlertModel>(items);
+
             OnDeleted?.Invoke(this, alert);
         }
 
@@ -72,7 +76,10 @@ namespace OK.Bitter.Engine.Stores
 
             foreach (var alert in alerts)
             {
-                _items.RemoveAll(x => x.UserId == alert.UserId && x.SymbolId == alert.SymbolId);
+                var items = _items.ToList();
+                items.RemoveAll(x => x.UserId == alert.UserId && x.SymbolId == alert.SymbolId);
+                _items = new ConcurrentBag<AlertModel>(items);
+
                 OnDeleted?.Invoke(this, alert);
             }
         }

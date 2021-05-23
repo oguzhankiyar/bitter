@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using OK.Bitter.Common.Models;
@@ -14,7 +15,7 @@ namespace OK.Bitter.Engine.Stores
 
         private readonly IPriceManager _priceManager;
 
-        private List<PriceModel> _items = new List<PriceModel>();
+        private ConcurrentBag<PriceModel> _items = new ConcurrentBag<PriceModel>();
 
         public PriceStore(IPriceManager priceManager)
         {
@@ -32,7 +33,7 @@ namespace OK.Bitter.Engine.Stores
         {
             if (expression == null)
             {
-                return _items;
+                return _items.ToList();
             }
 
             return _items.Where(expression).ToList();
@@ -61,7 +62,10 @@ namespace OK.Bitter.Engine.Stores
 
         public void Delete(PriceModel price)
         {
-            _items.RemoveAll(x => x.SymbolId == price.SymbolId);
+            var items = _items.ToList();
+            items.RemoveAll(x => x.SymbolId == price.SymbolId);
+            _items = new ConcurrentBag<PriceModel>(items);
+
             OnDeleted?.Invoke(this, price);
         }
 
@@ -71,7 +75,10 @@ namespace OK.Bitter.Engine.Stores
 
             foreach (var price in prices)
             {
-                _items.RemoveAll(x => x.SymbolId == price.SymbolId);
+                var items = _items.ToList();
+                items.RemoveAll(x => x.SymbolId == price.SymbolId);
+                _items = new ConcurrentBag<PriceModel>(items);
+
                 OnDeleted?.Invoke(this, price);
             }
         }

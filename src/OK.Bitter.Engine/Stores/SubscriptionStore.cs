@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using OK.Bitter.Common.Models;
@@ -14,7 +15,7 @@ namespace OK.Bitter.Engine.Stores
 
         private readonly ISubscriptionManager _subscriptionManager;
 
-        private List<SubscriptionModel> _items = new List<SubscriptionModel>();
+        private ConcurrentBag<SubscriptionModel> _items = new ConcurrentBag<SubscriptionModel>();
 
         public SubscriptionStore(ISubscriptionManager subscriptionManager)
         {
@@ -32,7 +33,7 @@ namespace OK.Bitter.Engine.Stores
         {
             if (expression == null)
             {
-                return _items;
+                return _items.ToList();
             }
 
             return _items.Where(expression).ToList();
@@ -62,7 +63,10 @@ namespace OK.Bitter.Engine.Stores
 
         public void Delete(SubscriptionModel subscription)
         {
-            _items.RemoveAll(x => x.UserId == subscription.UserId && x.SymbolId == subscription.SymbolId);
+            var items = _items.ToList();
+            items.RemoveAll(x => x.UserId == subscription.UserId && x.SymbolId == subscription.SymbolId);
+            _items = new ConcurrentBag<SubscriptionModel>(items);
+
             OnDeleted?.Invoke(this, subscription);
         }
 
@@ -72,7 +76,10 @@ namespace OK.Bitter.Engine.Stores
 
             foreach (var subscription in subscriptions)
             {
-                _items.RemoveAll(x => x.UserId == subscription.UserId && x.SymbolId == subscription.SymbolId);
+                var items = _items.ToList();
+                items.RemoveAll(x => x.UserId == subscription.UserId && x.SymbolId == subscription.SymbolId);
+                _items = new ConcurrentBag<SubscriptionModel>(items);
+
                 OnDeleted?.Invoke(this, subscription);
             }
         }

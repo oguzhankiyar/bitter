@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using OK.Bitter.Common.Models;
@@ -14,7 +15,7 @@ namespace OK.Bitter.Engine.Stores
 
         private readonly IUserManager _userManager;
 
-        private List<UserModel> _items = new List<UserModel>();
+        private ConcurrentBag<UserModel> _items = new ConcurrentBag<UserModel>();
 
         public UserStore(IUserManager userManager)
         {
@@ -32,7 +33,7 @@ namespace OK.Bitter.Engine.Stores
         {
             if (expression == null)
             {
-                return _items;
+                return _items.ToList();
             }
 
             return _items.Where(expression).ToList();
@@ -60,7 +61,10 @@ namespace OK.Bitter.Engine.Stores
 
         public void Delete(UserModel user)
         {
-            _items.RemoveAll(x => x.Id == user.Id);
+            var items = _items.ToList();
+            items.RemoveAll(x => x.Id == user.Id);
+            _items = new ConcurrentBag<UserModel>(items);
+
             OnDeleted?.Invoke(this, user);
         }
 
@@ -70,7 +74,10 @@ namespace OK.Bitter.Engine.Stores
 
             foreach (var user in users)
             {
-                _items.RemoveAll(x => x.Id == user.Id);
+                var items = _items.ToList();
+                items.RemoveAll(x => x.Id == user.Id);
+                _items = new ConcurrentBag<UserModel>(items);
+
                 OnDeleted?.Invoke(this, user);
             }
         }
