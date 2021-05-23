@@ -195,7 +195,7 @@ namespace OK.Bitter.Engine.Managers
 
         public void Subscribe(string symbol)
         {
-            if (_streams.ContainsKey(symbol))
+            if (string.IsNullOrEmpty(symbol) || _streams.ContainsKey(symbol))
             {
                 return;
             }

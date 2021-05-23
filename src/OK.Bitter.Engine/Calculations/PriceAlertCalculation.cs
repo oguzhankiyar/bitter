@@ -89,7 +89,10 @@ namespace OK.Bitter.Engine.Calculations
             {
                 if (alert.LastAlertDate == null || (DateTime.UtcNow - alert.LastAlertDate.Value).TotalMinutes > 5)
                 {
-                    var message = $"[ALERT] {_symbol.FriendlyName}: {symbolPrice}";
+                    var message = string.Format("[ALERT] {0}: {1} {2}",
+                            _symbol.Base,
+                            symbolPrice.ToString("0.########"),
+                            _symbol.Quote);
 
                     _userManager.SendMessage(alert.UserId, message);
 

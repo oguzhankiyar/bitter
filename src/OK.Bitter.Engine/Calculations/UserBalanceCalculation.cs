@@ -64,7 +64,7 @@ namespace OK.Bitter.Engine.Calculations
 
                 if (balance != 0)
                 {
-                    lines.Add($"{symbol.Base} | Volume: {openVolume} Balance: {balance}");
+                    lines.Add($"{symbol.Base} | Volume: {openVolume:0.########} Balance: {balance:0.########}");
                 }
 
                 totalBalance += balance;
@@ -72,7 +72,7 @@ namespace OK.Bitter.Engine.Calculations
 
             if (lines.Count > 1)
             {
-                lines.Add($"ALL | Balance: {totalBalance}");
+                lines.Add($"ALL | Balance: {totalBalance:0.########}");
             }
 
             var userId = trades.First().UserId;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -128,7 +129,7 @@ namespace OK.Bitter.Engine.Calculations
                     {
                         var message = string.Format("{0}: {1} {2} [{3}% {4}]",
                             _symbol.Base,
-                            symbolPrice,
+                            symbolPrice.ToString("0.########"),
                             _symbol.Quote,
                             (userChange * 100).ToString("+0.00;-0.00;0"),
                             (DateTime.UtcNow - subscription.LastNotifiedDate).ToIntervalString());
