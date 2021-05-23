@@ -34,15 +34,6 @@ namespace OK.Bitter.DataAccess.HostedServices
                  },
                  cancellationToken);
 
-            await _context.Messages.Indexes.CreateManyAsync(
-                  new[]
-                  {
-                     new CreateIndexModel<MessageEntity>(
-                        Builders<MessageEntity>.IndexKeys.Ascending(x => x.UserId),
-                        new CreateIndexOptions { Name = "UserId_1_SymbolId_1" })
-                  },
-                  cancellationToken);
-
             await _context.Prices.Indexes.CreateManyAsync(
                 new[]
                 {

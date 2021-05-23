@@ -17,7 +17,6 @@ namespace OK.Bitter.DataAccess
             });
 
             services.AddTransient<IAlertRepository, AlertRepository>();
-            services.AddTransient<IMessageRepository, MessageRepository>();
             services.AddTransient<IPriceRepository, PriceRepository>();
             services.AddTransient<ISettingRepository, SettingRepository>();
             services.AddTransient<ISubscriptionRepository, SubscriptionRepository>();

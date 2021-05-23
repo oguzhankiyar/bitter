@@ -10,7 +10,6 @@ namespace OK.Bitter.DataAccess.DataContexts
         public IMongoDatabase Database { get; }
 
         public IMongoCollection<AlertEntity> Alerts => GetCollection<AlertEntity>(nameof(Alerts));
-        public IMongoCollection<MessageEntity> Messages => GetCollection<MessageEntity>(nameof(Messages));
         public IMongoCollection<PriceEntity> Prices => GetCollection<PriceEntity>(nameof(Prices));
         public IMongoCollection<SettingEntity> Settings => GetCollection<SettingEntity>(nameof(Settings));
         public IMongoCollection<SubscriptionEntity> Subscriptions => GetCollection<SubscriptionEntity>(nameof(Subscriptions));

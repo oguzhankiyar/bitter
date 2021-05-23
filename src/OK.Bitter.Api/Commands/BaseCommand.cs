@@ -12,7 +12,6 @@ namespace OK.Bitter.Api.Commands
         public UserEntity User { get; private set; }
 
         private readonly IUserRepository _userRepository;
-        private readonly IMessageRepository _messageRepository;
 
         public BaseCommand(IServiceProvider serviceProvider)
         {
@@ -22,20 +21,11 @@ namespace OK.Bitter.Api.Commands
             }
 
             _userRepository = serviceProvider.GetRequiredService<IUserRepository>();
-            _messageRepository = serviceProvider.GetRequiredService<IMessageRepository>();
         }
 
         public override Task OnPreExecutionAsync()
         {
             User = _userRepository.Get(x => x.ChatId == Context.ChatId);
-
-            _messageRepository.Save(new MessageEntity()
-            {
-                UserId = User?.Id,
-                ChatId = Context.ChatId.ToString(),
-                Text = Context.MessageText,
-                Date = DateTime.UtcNow
-            });
 
             return base.OnPreExecutionAsync();
         }
