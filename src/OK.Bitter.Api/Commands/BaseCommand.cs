@@ -23,11 +23,18 @@ namespace OK.Bitter.Api.Commands
             _userRepository = serviceProvider.GetRequiredService<IUserRepository>();
         }
 
-        public override Task OnPreExecutionAsync()
+        public override async Task OnPreExecutionAsync()
         {
             User = _userRepository.Get(x => x.ChatId == Context.ChatId);
 
-            return base.OnPreExecutionAsync();
+            if (User == null)
+            {
+                await ReplyAsync("Please /start firstly.");
+
+                await AbortAsync();
+            }
+
+            await base.OnPreExecutionAsync();
         }
     }
 }
