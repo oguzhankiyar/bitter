@@ -34,7 +34,7 @@ namespace OK.Bitter.Engine.Managers
                     FriendlyName = x.FriendlyName,
                     Base = x.Base,
                     Quote = x.Quote,
-                    Route = x.Route,
+                    Route = JsonSerializer.Deserialize<List<SymbolRouteModel>>(x.Route),
                     MinimumChange = x.MinimumChange
                 })
                 .ToList();

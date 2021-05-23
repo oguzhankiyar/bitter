@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
@@ -40,15 +38,9 @@ namespace OK.Bitter.Engine.Calculations
             _subscriptions = new List<SubscriptionModel>();
             _routePrices = new Dictionary<string, (decimal Price, bool IsReverse)>();
 
-            var route = JsonDocument.Parse(_symbol.Route);
-
-            foreach (var item in route.RootElement.EnumerateArray())
+            foreach (var item in _symbol.Route)
             {
-                var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
-                var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
-                var isReverse = item.GetProperty("IsReverse").GetBoolean();
-
-                _routePrices.Add(string.Concat(baseCurrency, quoteCurrency), (0, isReverse));
+                _routePrices.Add(string.Concat(item.Base, item.Quote), (0, item.IsReverse));
             }
 
             return Task.CompletedTask;

@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using OK.Bitter.Common.Models;
@@ -48,7 +47,7 @@ namespace OK.Bitter.Engine.Managers
                     {
                         var symbolName = string.Concat(x.Base, x.Quote);
 
-                        var relateds = GetRelatedSymbols(x.Route);
+                        var relateds = GetRelatedSymbols(x);
 
                         foreach (var related in relateds)
                         {
@@ -171,18 +170,13 @@ namespace OK.Bitter.Engine.Managers
             };
         }
 
-        private List<string> GetRelatedSymbols(string route)
+        private List<string> GetRelatedSymbols(SymbolModel symbol)
         {
             var symbols = new List<string>();
 
-            var json = JsonDocument.Parse(route);
-
-            foreach (var item in json.RootElement.EnumerateArray())
+            foreach (var item in symbol.Route)
             {
-                var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
-                var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
-
-                var symbolName = string.Concat(baseCurrency, quoteCurrency);
+                var symbolName = string.Concat(item.Base, item.Quote);
 
                 if (!symbols.Contains(symbolName))
                 {
@@ -207,13 +201,9 @@ namespace OK.Bitter.Engine.Managers
                     _priceChangeCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
                 }
 
-                var route = JsonDocument.Parse(symbol.Route);
-
-                foreach (var item in route.RootElement.EnumerateArray())
+                foreach (var item in symbol.Route)
                 {
-                    var baseCurrency = item.GetProperty("Base").GetString().ToUpperInvariant();
-                    var quoteCurrency = item.GetProperty("Quote").GetString().ToUpperInvariant();
-                    var symbolName = string.Concat(baseCurrency, quoteCurrency);
+                    var symbolName = string.Concat(item.Base, item.Quote);
 
                     if (!uniques.Contains(symbolName))
                     {
