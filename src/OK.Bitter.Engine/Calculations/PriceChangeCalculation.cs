@@ -129,7 +129,7 @@ namespace OK.Bitter.Engine.Calculations
                     {
                         var message = string.Format("{0}: {1} {2} [{3}% {4}]",
                             _symbol.Base,
-                            symbolPrice.ToString("0.########"),
+                            symbolPrice.ToString("0.00######"),
                             _symbol.Quote,
                             (userChange * 100).ToString("+0.00;-0.00;0"),
                             (DateTime.UtcNow - subscription.LastNotifiedDate).ToIntervalString());

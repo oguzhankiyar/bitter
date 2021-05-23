@@ -96,7 +96,7 @@ namespace OK.Bitter.Engine.Calculations
 
                 unrealized = openVolume * (price.Price - buyPrice);
 
-                lines.Add($"{symbol.Base} | Real: {realized:0.########} UnReal: {unrealized:0.########} Total: {(realized + unrealized):0.########}");
+                lines.Add($"{symbol.Base} | Real: {realized:0.00######} UnReal: {unrealized:0.00######} Total: {(realized + unrealized):0.00######}");
 
                 totalPnL.Item1 += realized;
                 totalPnL.Item2 += unrealized;
@@ -104,7 +104,7 @@ namespace OK.Bitter.Engine.Calculations
 
             if (lines.Count > 1)
             {
-                lines.Add($"ALL | Real: {totalPnL.Item1:0.########} UnReal: {totalPnL.Item2:0.########} Total: {(totalPnL.Item1 + totalPnL.Item2):0.########}");
+                lines.Add($"ALL | Real: {totalPnL.Item1:0.00######} UnReal: {totalPnL.Item2:0.00######} Total: {(totalPnL.Item1 + totalPnL.Item2):0.00######}");
             }
 
             var userId = trades.First().UserId;

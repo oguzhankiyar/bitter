@@ -91,7 +91,7 @@ namespace OK.Bitter.Engine.Calculations
                 {
                     var message = string.Format("[ALERT] {0}: {1} {2}",
                             _symbol.Base,
-                            symbolPrice.ToString("0.########"),
+                            symbolPrice.ToString("0.00######"),
                             _symbol.Quote);
 
                     _userManager.SendMessage(alert.UserId, message);
