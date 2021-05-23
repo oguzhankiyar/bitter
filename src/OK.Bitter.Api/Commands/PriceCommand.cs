@@ -84,7 +84,7 @@ namespace OK.Bitter.Api.Commands
             {
                 var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
 
-                lines.Add($"{item.Date.ToString("dd.MM.yyyy HH:mm:ss")} | {sym.Base}: {item.Price} {sym.Quote} {string.Format("[{0}% {1}]", (item.Change * 100).ToString("+0.00;-0.00;0"), (DateTime.UtcNow - item.LastChangeDate).ToIntervalString())}");
+                lines.Add($"{item.Date:dd.MM.yyyy HH:mm:ss} | {sym.Base}: {item.Price:0.########} {sym.Quote} {string.Format("[{0}% {1}]", (item.Change * 100).ToString("+0.00;-0.00;0"), (DateTime.UtcNow - item.LastChangeDate).ToIntervalString())}");
             }
 
             if (!lines.Any())
