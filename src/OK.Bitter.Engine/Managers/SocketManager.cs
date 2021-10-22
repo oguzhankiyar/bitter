@@ -40,156 +40,22 @@ namespace OK.Bitter.Engine.Managers
             _priceChangeCalculations = new ConcurrentDictionary<string, PriceChangeCalculation>();
             _priceAlertCalculations = new ConcurrentDictionary<string, PriceAlertCalculation>();
 
-            Action reploadSymbolMap = () =>
-            {
-                _symbolStore.Get()
-                    .ForEach(x =>
-                    {
-                        var symbolName = string.Concat(x.Base, x.Quote);
+            _symbolStore.OnInserted += (_, symbol) => ReloadSymbolMap();
+            _symbolStore.OnUpdated += (_, symbol) => ReloadSymbolMap();
+            _symbolStore.OnDeleted += (_, symbol) => ReloadSymbolMap();
 
-                        var relateds = GetRelatedSymbols(x);
+            _subscriptionStore.OnInserted += (_, subscription) => AddOrUpdateSubscription(subscription).ConfigureAwait(false);
+            _subscriptionStore.OnUpdated += (_, subscription) => AddOrUpdateSubscription(subscription).ConfigureAwait(false);
+            _subscriptionStore.OnDeleted += (_, subscription) => DeleteSubscription(subscription).ConfigureAwait(false);
 
-                        foreach (var related in relateds)
-                        {
-                            if (_symbolMap.TryGetValue(related, out var items))
-                            {
-                                if (!items.Contains(symbolName))
-                                {
-                                    items.Add(symbolName);
-                                }
-                            }
-                            else
-                            {
-                                _symbolMap.Add(related, new List<string> { symbolName });
-                            }
-                        }
-                    });
-            };
-
-            _symbolStore.OnInserted += (_, symbol) =>
-            {
-                reploadSymbolMap();
-            };
-
-            _symbolStore.OnUpdated += (_, symbol) =>
-            {
-                reploadSymbolMap();
-            };
-
-            _symbolStore.OnDeleted += (_, symbol) =>
-            {
-                reploadSymbolMap();
-            };
-
-            _subscriptionStore.OnInserted += async (_, subscription) =>
-            {
-                var symbol = _symbolStore.Find(x => x.Id == subscription.SymbolId);
-
-                if (_priceChangeCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceChangeCalculation existing))
-                {
-                    await existing.SubscribeAsync(subscription);
-                }
-                else
-                {
-                    var calculation = _serviceProvider.GetRequiredService<PriceChangeCalculation>();
-                    await calculation.InitAsync(symbol);
-                    await calculation.SubscribeAsync(subscription);
-                    _priceChangeCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
-                }
-            };
-
-            _subscriptionStore.OnUpdated += async (_, subscription) =>
-            {
-                var symbol = _symbolStore.Find(x => x.Id == subscription.SymbolId);
-
-                if (_priceChangeCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceChangeCalculation existing))
-                {
-                    await existing.SubscribeAsync(subscription);
-                }
-                else
-                {
-                    var calculation = _serviceProvider.GetRequiredService<PriceChangeCalculation>();
-                    await calculation.InitAsync(symbol);
-                    await calculation.SubscribeAsync(subscription);
-                    _priceChangeCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
-                }
-            };
-
-            _subscriptionStore.OnDeleted += async (_, subscription) =>
-            {
-                var symbol = _symbolStore.Find(x => x.Id == subscription.SymbolId);
-
-                if (_priceChangeCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceChangeCalculation calculation))
-                {
-                    await calculation.UnsubscribeAsync(subscription);
-                }
-            };
-
-            _alertStore.OnInserted += async (_, alert) =>
-            {
-                var symbol = _symbolStore.Find(x => x.Id == alert.SymbolId);
-
-                if (_priceAlertCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceAlertCalculation existing))
-                {
-                    await existing.SubscribeAsync(alert);
-                }
-                else
-                {
-                    var calculation = _serviceProvider.GetRequiredService<PriceAlertCalculation>();
-                    await calculation.InitAsync(symbol);
-                    await calculation.SubscribeAsync(alert);
-                    _priceAlertCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
-                }
-            };
-
-            _alertStore.OnUpdated += async (_, alert) =>
-            {
-                var symbol = _symbolStore.Find(x => x.Id == alert.SymbolId);
-
-                if (_priceAlertCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceAlertCalculation existing))
-                {
-                    await existing.SubscribeAsync(alert);
-                }
-                else
-                {
-                    var calculation = _serviceProvider.GetRequiredService<PriceAlertCalculation>();
-                    await calculation.InitAsync(symbol);
-                    await calculation.SubscribeAsync(alert);
-                    _priceAlertCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
-                }
-            };
-
-            _alertStore.OnDeleted += async (_, alert) =>
-            {
-                var symbol = _symbolStore.Find(x => x.Id == alert.SymbolId);
-
-                if (_priceAlertCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceAlertCalculation calculation))
-                {
-                    await calculation.UnsubscribeAsync(alert);
-                }
-            };
-        }
-
-        private List<string> GetRelatedSymbols(SymbolModel symbol)
-        {
-            var symbols = new List<string>();
-
-            foreach (var item in symbol.Route)
-            {
-                var symbolName = string.Concat(item.Base, item.Quote);
-
-                if (!symbols.Contains(symbolName))
-                {
-                    symbols.Add(symbolName);
-                }
-            }
-
-            return symbols;
+            _alertStore.OnInserted += (_, alert) => AddOrUpdateAlert(alert).ConfigureAwait(false);
+            _alertStore.OnUpdated += (_, alert) => AddOrUpdateAlert(alert).ConfigureAwait(false);
+            _alertStore.OnDeleted += (_, alert) => DeleteAlert(alert).ConfigureAwait(false);
         }
 
         public async Task SubscribeAsync()
         {
-            var uniques = new List<string>();
+            var streamSymbols = new List<string>();
             var symbols = _symbolStore.Get();
 
             foreach (var symbol in symbols)
@@ -201,67 +67,45 @@ namespace OK.Bitter.Engine.Managers
                     _priceChangeCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
                 }
 
-                foreach (var item in symbol.Route)
+                foreach (var routeSymbol in symbol.Route)
                 {
-                    var symbolName = string.Concat(item.Base, item.Quote);
+                    var symbolName = string.Concat(routeSymbol.Base, routeSymbol.Quote);
 
-                    if (!uniques.Contains(symbolName))
+                    if (!streamSymbols.Contains(symbolName))
                     {
-                        uniques.Add(symbolName);
+                        streamSymbols.Add(symbolName);
                     }
                 }
             }
 
-            foreach (var unique in uniques)
+            foreach (var streamSymbol in streamSymbols)
             {
-                if (_streams.ContainsKey(unique))
+                if (_streams.ContainsKey(streamSymbol))
                 {
                     continue;
                 }
 
                 var stream = _serviceProvider.GetRequiredService<IPriceStream>();
 
-                await stream.InitAsync(unique);
-                await stream.SubscribeAsync((_, price) =>
-                {
-                    if (_symbolMap.TryGetValue(price.SymbolId, out var items))
-                    {
-                        foreach (var item in items)
-                        {
-                            if (_priceChangeCalculations.TryGetValue(item, out PriceChangeCalculation calc))
-                            {
-                                _ = calc.CalculateAsync(price.SymbolId, price.Date, price.Price);
-                            }
-                        }
-                    }
-                });
-                await stream.SubscribeAsync((_, price) =>
-                {
-                    if (_symbolMap.TryGetValue(price.SymbolId, out var items))
-                    {
-                        foreach (var item in items)
-                        {
-                            if (_priceAlertCalculations.TryGetValue(item, out PriceAlertCalculation calc))
-                            {
-                                _ = calc.CalculateAsync(price.SymbolId, price.Date, price.Price);
-                            }
-                        }
-                    }
-                });
+                await stream.InitAsync(streamSymbol);
+                await stream.SubscribeAsync((_, price) => CalculatePriceChange(price).ConfigureAwait(false));
+                await stream.SubscribeAsync((_, price) => CalculatePriceAlert(price).ConfigureAwait(false));
                 await stream.StartAsync();
 
-                _streams.Add(unique, stream);
+                _streams.Add(streamSymbol, stream);
             }
         }
 
         public Task UnsubscribeAsync()
         {
-            _streams.Values.ToList().ForEach(async stream =>
-            {
-                await stream.StopAsync();
-            });
+            var tasks = new List<Task>();
 
-            return Task.CompletedTask;
+            foreach (var stream in _streams.Values)
+            {
+                tasks.Add(stream.StopAsync());
+            }
+
+            return Task.WhenAll(tasks);
         }
 
         public void ResetCache(string userId, string symbolId = null)
@@ -279,6 +123,20 @@ namespace OK.Bitter.Engine.Managers
                 subscription.LastNotifiedDate = DateTime.Now;
 
                 _subscriptionStore.Upsert(subscription);
+            }
+
+            var alerts = _alertStore.Get(x => x.UserId == userId);
+            
+            if (!string.IsNullOrEmpty(symbolId))
+            {
+                alerts = alerts.Where(x => x.SymbolId == symbolId).ToList();
+            }
+
+            foreach (var alert in alerts)
+            {
+                alert.LastAlertDate = DateTime.Now;
+                
+                _alertStore.Upsert(alert);
             }
         }
 
@@ -314,6 +172,142 @@ namespace OK.Bitter.Engine.Managers
             }
 
             return $"{symbol.FriendlyName} symbol stream is {stream.State}";
+        }
+
+        private async Task CalculatePriceChange(PriceModel price)
+        {
+            if (!_symbolMap.TryGetValue(price.SymbolId, out var symbols))
+            {
+                return;
+            }
+
+            var tasks = new List<Task>();
+
+            foreach (var symbol in symbols)
+            {
+                if (_priceChangeCalculations.TryGetValue(symbol, out var calc))
+                {
+                    tasks.Add(calc.CalculateAsync(price.SymbolId, price.Date, price.Price));
+                }
+            }
+
+            await Task.WhenAll(tasks);
+        }
+
+        private async Task CalculatePriceAlert(PriceModel price)
+        {
+            if (!_symbolMap.TryGetValue(price.SymbolId, out var symbols))
+            {
+                return;
+            }
+            
+            var tasks = new List<Task>();
+            
+            foreach (var symbol in symbols)
+            {
+                if (_priceAlertCalculations.TryGetValue(symbol, out var calc))
+                {
+                    tasks.Add(calc.CalculateAsync(price.SymbolId, price.Date, price.Price));
+                }
+            }
+
+            await Task.WhenAll(tasks);
+        }
+
+        private async Task AddOrUpdateSubscription(SubscriptionModel subscription)
+        {
+            var symbol = _symbolStore.Find(x => x.Id == subscription.SymbolId);
+
+            if (_priceChangeCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out var existing))
+            {
+                await existing.SubscribeAsync(subscription);
+            }
+            else
+            {
+                var calculation = _serviceProvider.GetRequiredService<PriceChangeCalculation>();
+                await calculation.InitAsync(symbol);
+                await calculation.SubscribeAsync(subscription);
+                _priceChangeCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
+            }
+        }
+        
+        private async Task DeleteSubscription(SubscriptionModel subscription)
+        {
+            var symbol = _symbolStore.Find(x => x.Id == subscription.SymbolId);
+
+            if (_priceChangeCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out var calculation))
+            {
+                await calculation.UnsubscribeAsync(subscription);
+            }
+        }
+
+        private async Task AddOrUpdateAlert(AlertModel alert)
+        {
+            var symbol = _symbolStore.Find(x => x.Id == alert.SymbolId);
+
+            if (_priceAlertCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceAlertCalculation existing))
+            {
+                await existing.SubscribeAsync(alert);
+            }
+            else
+            {
+                var calculation = _serviceProvider.GetRequiredService<PriceAlertCalculation>();
+                await calculation.InitAsync(symbol);
+                await calculation.SubscribeAsync(alert);
+                _priceAlertCalculations.Add(string.Concat(symbol.Base, symbol.Quote), calculation);
+            }
+        }
+
+        private async Task DeleteAlert(AlertModel alert)
+        {
+            var symbol = _symbolStore.Find(x => x.Id == alert.SymbolId);
+
+            if (_priceAlertCalculations.TryGetValue(string.Concat(symbol.Base, symbol.Quote), out PriceAlertCalculation calculation))
+            {
+                await calculation.UnsubscribeAsync(alert);
+            }
+        }
+
+        private void ReloadSymbolMap()
+        {
+            var symbols = _symbolStore.Get();
+               
+            foreach (var symbol in symbols)
+            {
+                var symbolName = string.Concat(symbol.Base, symbol.Quote);
+
+                foreach (var related in GetRelatedSymbols(symbol))
+                {
+                    if (_symbolMap.TryGetValue(related, out var items))
+                    {
+                        if (!items.Contains(symbolName))
+                        {
+                            items.Add(symbolName);
+                        }
+                    }
+                    else
+                    {
+                        _symbolMap.Add(related, new List<string> { symbolName });
+                    }
+                }
+            }
+        }
+
+        private List<string> GetRelatedSymbols(SymbolModel symbol)
+        {
+            var symbols = new List<string>();
+
+            foreach (var item in symbol.Route)
+            {
+                var symbolName = string.Concat(item.Base, item.Quote);
+
+                if (!symbols.Contains(symbolName))
+                {
+                    symbols.Add(symbolName);
+                }
+            }
+
+            return symbols;
         }
     }
 }
