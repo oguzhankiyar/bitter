@@ -55,7 +55,7 @@ namespace OK.Bitter.Engine.Calculations
 
         public Task UnsubscribeAsync(SubscriptionModel subscription)
         {
-            var current = _subscriptions.First(x => x.UserId == subscription.UserId && x.SymbolId == subscription.SymbolId);
+            var current = _subscriptions.FirstOrDefault(x => x.UserId == subscription.UserId && x.SymbolId == subscription.SymbolId);
 
             if (current != null)
             {
