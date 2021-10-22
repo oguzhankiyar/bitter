@@ -58,11 +58,11 @@ namespace OK.Bitter.Api.Commands
 
             if (string.IsNullOrEmpty(Context.Username))
             {
-                reply.AppendLine("Wellcome!");
+                reply.AppendLine("Welcome!");
             }
             else
             {
-                reply.AppendLine($"Wellcome @{Context.Username}!");
+                reply.AppendLine($"Welcome @{Context.Username}!");
             }
 
             reply.AppendLine("You can find all commands by typing help.");
