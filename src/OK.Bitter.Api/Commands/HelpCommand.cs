@@ -36,22 +36,27 @@ namespace OK.Bitter.Api.Commands
                     lines.Add("Get symbol stream status");
                     lines.Add("- status get <all|symbol>");
                     lines.Add(string.Empty);
+                    
+                    lines.Add("Manage the users");
+                    lines.Add("- users get <all|username>");
+                    lines.Add("- users del <username>");
+                    lines.Add(string.Empty);
                 }
 
-                lines.Add("Manage your subscriptions");
+                lines.Add("Manage the subscriptions");
                 lines.Add("- subscriptions get <all|symbol>");
                 lines.Add("- subscriptions set <all|symbol>");
                 lines.Add("- subscriptions del <all|symbol>");
                 lines.Add(string.Empty);
 
-                lines.Add("Manage your alerts");
+                lines.Add("Manage the alerts");
                 lines.Add("- alerts get <all|symbol>");
                 lines.Add("- alerts set <symbol> less <value>");
                 lines.Add("- alerts set <symbol> greater <value>");
                 lines.Add("- alerts del <symbol>");
                 lines.Add(string.Empty);
 
-                lines.Add("Manage your trades");
+                lines.Add("Manage the trades");
                 lines.Add("- trades get <all|symbol>");
                 lines.Add("- trades buy <symbol> <volume> <price> <time>");
                 lines.Add("- trades sell <symbol> <volume> <price> <time>");
@@ -61,8 +66,13 @@ namespace OK.Bitter.Api.Commands
                 lines.Add("Get price history");
                 lines.Add("- prices get <all|symbol> <interval>");
                 lines.Add(string.Empty);
+                
+                lines.Add("Get calculations");
+                lines.Add("- calculations balance <all|symbol>");
+                lines.Add("- calculations pnl <all|symbol>");
+                lines.Add(string.Empty);
 
-                lines.Add("Manage your settings");
+                lines.Add("Manage the settings");
                 lines.Add("- settings get <all|key>");
                 lines.Add("- settings set <key> <value>");
                 lines.Add("- settings del <key>");
