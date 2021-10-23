@@ -12,7 +12,7 @@ using OK.GramHook;
 namespace OK.Bitter.Api.Commands
 {
     [Command("/start|start")]
-    public class StartCommand : BaseCommand
+    public class StartCommand : CommandBase
     {
         private readonly IUserRepository _userRepository;
         private readonly IStore<UserModel> _userStore;
@@ -21,8 +21,7 @@ namespace OK.Bitter.Api.Commands
         public StartCommand(
             IUserRepository userRepository,
             IStore<UserModel> userStore,
-            IMessageService messageService,
-            IServiceProvider serviceProvider) : base(serviceProvider)
+            IMessageService messageService)
         {
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _userStore = userStore ?? throw new ArgumentNullException(nameof(userStore));
