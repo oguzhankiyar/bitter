@@ -30,7 +30,7 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("get", "{symbol}")]
         public async Task GetAsync(string symbol)
         {
-            if (User == null || User.Type != UserTypeEnum.Admin)
+            if (User.Type != UserTypeEnum.Admin)
             {
                 await ReplyAsync("Unauthorized!");
 

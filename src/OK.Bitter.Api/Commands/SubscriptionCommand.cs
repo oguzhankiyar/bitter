@@ -28,18 +28,6 @@ namespace OK.Bitter.Api.Commands
             _symbolRepository = symbolRepository ?? throw new ArgumentNullException(nameof(symbolRepository));
         }
 
-        public override async Task OnPreExecutionAsync()
-        {
-            await base.OnPreExecutionAsync();
-
-            if (User == null)
-            {
-                await ReplyAsync("Unauthorized!");
-
-                await AbortAsync();
-            }
-        }
-
         [CommandCase("get", "{symbol}")]
         public async Task GetAsync(string symbol)
         {
@@ -101,17 +89,17 @@ namespace OK.Bitter.Api.Commands
             }
         }
 
-        [CommandCase("set", "{symbol}", "{treshold}")]
-        public async Task SetAsync(string symbol, string treshold)
+        [CommandCase("set", "{symbol}", "{threshold}")]
+        public async Task SetAsync(string symbol, string percent)
         {
-            if (!decimal.TryParse(treshold, out decimal tresholdValue))
+            if (!decimal.TryParse(percent, out decimal percentValue))
             {
                 await ReplyAsync("Invalid arguments!");
 
                 return;
             }
 
-            var minimumChange = tresholdValue / 100;
+            var minimumChange = percentValue / 100;
 
             if (symbol == "all")
             {

@@ -40,7 +40,7 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("get", "{name}")]
         public async Task GetAsync(string name)
         {
-            if (User == null || User.Type != UserTypeEnum.Admin)
+            if (User.Type != UserTypeEnum.Admin)
             {
                 await ReplyAsync("Unauthorized!");
 
@@ -87,7 +87,7 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("del", "{name}")]
         public async Task DelAsync(string name)
         {
-            if (User == null || User.Type != UserTypeEnum.Admin)
+            if (User.Type != UserTypeEnum.Admin)
             {
                 await ReplyAsync("Unauthorized!");
 

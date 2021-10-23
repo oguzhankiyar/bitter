@@ -25,13 +25,6 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("{symbol}")]
         public async Task ExecuteAsync(string symbol)
         {
-            if (User == null)
-            {
-                await ReplyAsync("Unauthorized!");
-
-                return;
-            }
-
             if (symbol == "all")
             {
                 _socketServiceManager.ResetCache(User.Id);

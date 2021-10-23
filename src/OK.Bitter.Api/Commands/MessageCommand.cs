@@ -25,7 +25,7 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("{message}")]
         public async Task SendAsync(string message)
         {
-            if (User == null || User.Type != UserTypeEnum.Admin)
+            if (User.Type != UserTypeEnum.Admin)
             {
                 await ReplyAsync("Unauthorized!");
 

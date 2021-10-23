@@ -28,18 +28,6 @@ namespace OK.Bitter.Api.Commands
             _symbolRepository = symbolRepository ?? throw new ArgumentNullException(nameof(symbolRepository));
         }
 
-        public override async Task OnPreExecutionAsync()
-        {
-            await base.OnPreExecutionAsync();
-
-            if (User == null)
-            {
-                await ReplyAsync("Unauthorized!");
-
-                await AbortAsync();
-            }
-        }
-
         [CommandCase("get", "{symbol}")]
         public async Task GetAsync(string symbol)
         {
@@ -125,8 +113,8 @@ namespace OK.Bitter.Api.Commands
             }
         }
 
-        [CommandCase("set", "{symbol}", "{condition}", "{treshold}")]
-        public async Task SetAsync(string symbol, string condition, string treshold)
+        [CommandCase("set", "{symbol}", "{condition}", "{threshold}")]
+        public async Task SetAsync(string symbol, string condition, string threshold)
         {
             var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
             if (symbolEntity == null)
@@ -136,7 +124,7 @@ namespace OK.Bitter.Api.Commands
                 return;
             }
 
-            if (!decimal.TryParse(treshold, out decimal tresholdValue))
+            if (!decimal.TryParse(threshold, out var thresholdValue))
             {
                 await ReplyAsync("Invalid arguments!");
 
@@ -153,12 +141,12 @@ namespace OK.Bitter.Api.Commands
                     {
                         UserId = User.Id,
                         SymbolId = symbolEntity.Id,
-                        LessValue = tresholdValue
+                        LessValue = thresholdValue
                     };
                 }
                 else
                 {
-                    alert.LessValue = tresholdValue;
+                    alert.LessValue = thresholdValue;
                 }
 
                 _alertRepository.Save(alert);
@@ -182,12 +170,12 @@ namespace OK.Bitter.Api.Commands
                     {
                         UserId = User.Id,
                         SymbolId = symbolEntity.Id,
-                        GreaterValue = tresholdValue
+                        GreaterValue = thresholdValue
                     };
                 }
                 else
                 {
-                    alert.GreaterValue = tresholdValue;
+                    alert.GreaterValue = thresholdValue;
                 }
 
                 _alertRepository.Save(alert);

@@ -20,18 +20,6 @@ namespace OK.Bitter.Api.Commands
             _settingRepository = settingRepository ?? throw new ArgumentNullException(nameof(settingRepository));
         }
 
-        public override async Task OnPreExecutionAsync()
-        {
-            await base.OnPreExecutionAsync();
-
-            if (User == null)
-            {
-                await ReplyAsync("Unauthorized!");
-
-                await AbortAsync();
-            }
-        }
-
         [CommandCase("get", "{key}")]
         public async Task GetAsync(string key)
         {

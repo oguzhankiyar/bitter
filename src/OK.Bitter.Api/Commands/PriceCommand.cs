@@ -27,13 +27,6 @@ namespace OK.Bitter.Api.Commands
         [CommandCase("get", "{symbol}", "{interval}")]
         public async Task GetAsync(string symbol, string interval)
         {
-            if (User == null)
-            {
-                await ReplyAsync("Unauthorized!");
-
-                return;
-            }
-
             var startDate = DateTime.UtcNow;
 
             if (interval.EndsWith("h"))
