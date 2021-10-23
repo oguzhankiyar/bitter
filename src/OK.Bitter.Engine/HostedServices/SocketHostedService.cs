@@ -6,7 +6,7 @@ using OK.Bitter.Common.Models;
 using OK.Bitter.Core.Managers;
 using OK.Bitter.Engine.Stores;
 
-namespace OK.Bitter.Api.HostedServices
+namespace OK.Bitter.Engine.HostedServices
 {
     public class SocketHostedService : IHostedService
     {

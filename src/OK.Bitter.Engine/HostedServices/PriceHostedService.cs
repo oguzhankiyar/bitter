@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using OK.Bitter.Core.Managers;
 
-namespace OK.Bitter.Api.HostedServices
+namespace OK.Bitter.Engine.HostedServices
 {
     public class PriceHostedService : IHostedService, IDisposable
     {
