@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using OK.Bitter.Api.Config;
 using OK.Bitter.DataAccess;
 using OK.Bitter.Engine;
@@ -23,6 +25,11 @@ namespace OK.Bitter.Api
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.Configure<KestrelServerOptions>(opts =>
+            {
+                opts.AllowSynchronousIO = true;
+            });
+            
             _configuration.Bind(_bitterConfig);
 
             services.AddSingleton(_bitterConfig);
@@ -40,7 +47,7 @@ namespace OK.Bitter.Api
             });
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {

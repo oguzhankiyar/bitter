@@ -50,7 +50,7 @@ namespace OK.Bitter.DataAccess.Repositories
             _collection.ReplaceOne(
                    x => x.Id.Equals(entity.Id),
                    entity,
-                   new UpdateOptions
+                   new ReplaceOptions
                    {
                        IsUpsert = true
                    });
