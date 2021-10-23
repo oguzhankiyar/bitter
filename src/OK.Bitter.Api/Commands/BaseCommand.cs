@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using OK.Bitter.Common.Entities;
@@ -9,11 +11,11 @@ namespace OK.Bitter.Api.Commands
 {
     public abstract class BaseCommand : CommandBase
     {
-        public UserEntity User { get; private set; }
+        protected UserEntity User { get; private set; }
 
         private readonly IUserRepository _userRepository;
 
-        public BaseCommand(IServiceProvider serviceProvider)
+        protected BaseCommand(IServiceProvider serviceProvider)
         {
             if (serviceProvider == default)
             {
@@ -35,6 +37,22 @@ namespace OK.Bitter.Api.Commands
             }
 
             await base.OnPreExecutionAsync();
+        }
+
+        protected async Task ReplyPaginatedAsync(List<string> lines)
+        {
+            const int take = 25;
+            
+            var skip = 0;
+
+            while (skip < lines.Count)
+            {
+                var items = lines.Skip(skip).Take(take);
+                await ReplyAsync(string.Join("\r\n", items));
+                await Task.Delay(500);
+
+                skip += take;
+            }
         }
     }
 }
