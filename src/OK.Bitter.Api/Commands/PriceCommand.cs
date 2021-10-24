@@ -84,7 +84,7 @@ namespace OK.Bitter.Api.Commands
             {
                 var symbolEntity = _symbolRepository.Get(x => x.Id == item.SymbolId);
                 var changeValue = (item.Change * 100).ToString("+0.00;-0.00;0");
-                var changeInterval = (DateTime.UtcNow - item.LastChangeDate).ToIntervalString();
+                var changeInterval = (item.Date - item.LastChangeDate).ToIntervalString();
                 
                 lines.Add($"{item.Date:dd.MM.yyyy HH:mm:ss} | {symbolEntity.Base}: {item.Price:0.00######} {symbolEntity.Quote} [{changeValue}% {changeInterval}]");
             }

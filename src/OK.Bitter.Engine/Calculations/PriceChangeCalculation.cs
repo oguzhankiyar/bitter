@@ -93,14 +93,14 @@ namespace OK.Bitter.Engine.Calculations
                     Price = symbolPrice,
                     Date = date
                 });
-                _priceManager.SaveLastPrice(_symbol.Id, symbolPrice, decimal.Zero, date, DateTime.UtcNow);
+                _priceManager.SaveLastPrice(_symbol.Id, symbolPrice, decimal.Zero, date, date);
 
                 return Task.CompletedTask;
             }
 
-            var change = Math.Abs((symbolPrice - last.Price) / last.Price);
+            var change = (symbolPrice - last.Price) / last.Price;
 
-            if (change < _symbol.MinimumChange)
+            if (Math.Abs(change) < _symbol.MinimumChange)
             {
                 return Task.CompletedTask;
             }
@@ -110,30 +110,30 @@ namespace OK.Bitter.Engine.Calculations
                 if (subscription.LastNotifiedPrice == decimal.Zero)
                 {
                     subscription.LastNotifiedPrice = symbolPrice;
-                    subscription.LastNotifiedDate = DateTime.UtcNow;
+                    subscription.LastNotifiedDate = date;
+                    
+                    continue;
                 }
-                else
+                
+                var userPrice = subscription.LastNotifiedPrice;
+                var userChange = (symbolPrice - userPrice) / userPrice;
+
+                if (Math.Abs(userChange) < subscription.MinimumChange)
                 {
-                    var userPrice = subscription.LastNotifiedPrice;
-                    var userChange = (symbolPrice - userPrice) / userPrice;
-
-                    if (Math.Abs(userChange) >= subscription.MinimumChange)
-                    {
-                        var message = string.Format("{0}: {1} {2} [{3}% {4}]",
-                            _symbol.Base,
-                            symbolPrice.ToString("0.00######"),
-                            _symbol.Quote,
-                            (userChange * 100).ToString("+0.00;-0.00;0"),
-                            (DateTime.UtcNow - subscription.LastNotifiedDate).ToIntervalString());
-
-                        _userManager.SendMessage(subscription.UserId, message);
-
-                        subscription.LastNotifiedPrice = symbolPrice;
-                        subscription.LastNotifiedDate = DateTime.UtcNow;
-
-                        _subscriptionManager.UpdateAsNotified(subscription.UserId, _symbol.Id, symbolPrice, DateTime.UtcNow);
-                    }
+                    continue;
                 }
+                
+                var changeValue = (userChange * 100).ToString("+0.00;-0.00;0");
+                var changeInterval = (date - subscription.LastNotifiedDate).ToIntervalString();
+                    
+                var message = $"{_symbol.Base}: {symbolPrice:0.00######} {_symbol.Quote} [{changeValue}% {changeInterval}]";
+
+                _userManager.SendMessage(subscription.UserId, message);
+
+                subscription.LastNotifiedPrice = symbolPrice;
+                subscription.LastNotifiedDate = date;
+
+                _subscriptionManager.UpdateAsNotified(subscription.UserId, _symbol.Id, symbolPrice, date);
             }
 
             _priceStore.Upsert(new PriceModel
@@ -142,7 +142,7 @@ namespace OK.Bitter.Engine.Calculations
                 Price = symbolPrice,
                 Date = date
             });
-            _priceManager.SaveLastPrice(_symbol.Id, symbolPrice, change, date, DateTime.UtcNow);
+            _priceManager.SaveLastPrice(_symbol.Id, symbolPrice, change, last.Date, date);
 
             return Task.CompletedTask;
         }
