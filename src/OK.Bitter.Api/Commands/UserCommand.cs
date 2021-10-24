@@ -49,9 +49,15 @@ namespace OK.Bitter.Api.Commands
 
             if (name == "all")
             {
-                var lines = new List<string>();
-
                 var users = _userRepository.GetList();
+                if (!users.Any())
+                {
+                    await ReplyAsync("There are no users!");
+
+                    return;
+                }
+
+                var lines = new List<string>();
 
                 foreach (var item in users)
                 {

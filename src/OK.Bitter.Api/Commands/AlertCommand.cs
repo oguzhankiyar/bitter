@@ -34,40 +34,25 @@ namespace OK.Bitter.Api.Commands
             if (symbol == "all")
             {
                 var alerts = _alertRepository.GetList(x => x.UserId == User.Id);
-
-                var lines = new List<string>();
-
-                foreach (var item in alerts)
-                {
-                    var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
-
-                    var line = $"{sym.Base} when";
-
-                    if (item.LessValue.HasValue)
-                    {
-                        line += $" less than {item.LessValue.Value} {sym.Quote}";
-                    }
-
-                    if (item.GreaterValue.HasValue)
-                    {
-                        line += $" greater than {item.GreaterValue.Value} {sym.Quote}";
-                    }
-
-                    lines.Add(line);
-                }
-
-                if (!lines.Any())
+                if (!alerts.Any())
                 {
                     await ReplyAsync("There are no alerts!");
 
                     return;
                 }
 
+                var lines = new List<string>();
+
+                foreach (var alert in alerts)
+                {
+                    var symbolEntity = _symbolRepository.Get(x => x.Id == alert.SymbolId);
+
+                    lines.Add(FormatAlert(symbolEntity, alert));
+                }
+
                 lines = lines.OrderBy(x => x).ToList();
 
                 await ReplyPaginatedAsync(lines);
-
-                return;
             }
             else
             {
@@ -87,19 +72,7 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                var result = $"{symbolEntity.Base} when";
-
-                if (alert.LessValue.HasValue)
-                {
-                    result += $" less than {alert.LessValue.Value} {symbolEntity.Quote}";
-                }
-
-                if (alert.GreaterValue.HasValue)
-                {
-                    result += $" greater than {alert.GreaterValue.Value} {symbolEntity.Quote}";
-                }
-
-                await ReplyAsync(result);
+                await ReplyAsync(FormatAlert(symbolEntity, alert));
             }
         }
 
@@ -123,68 +96,72 @@ namespace OK.Bitter.Api.Commands
 
             var alert = _alertRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
 
-            if (condition == "less")
+            switch (condition)
             {
-                if (alert == null)
+                case "less":
                 {
-                    alert = new AlertEntity()
+                    if (alert == null)
                     {
-                        UserId = User.Id,
-                        SymbolId = symbolEntity.Id,
-                        LessValue = thresholdValue
-                    };
-                }
-                else
-                {
-                    alert.LessValue = thresholdValue;
-                }
-
-                _alertRepository.Save(alert);
-                _alertStore.Upsert(new AlertModel
-                {
-                    UserId = alert.UserId,
-                    SymbolId = alert.SymbolId,
-                    LessValue = alert.LessValue,
-                    GreaterValue = alert.GreaterValue,
-                    LastAlertDate = alert.LastAlertDate
-                });
-
-                await ReplyAsync("Success!");
-
-            }
-            else if (condition == "greater")
-            {
-                if (alert == null)
-                {
-                    alert = new AlertEntity()
+                        alert = new AlertEntity()
+                        {
+                            UserId = User.Id,
+                            SymbolId = symbolEntity.Id,
+                            LessValue = thresholdValue
+                        };
+                    }
+                    else
                     {
-                        UserId = User.Id,
-                        SymbolId = symbolEntity.Id,
-                        GreaterValue = thresholdValue
-                    };
+                        alert.LessValue = thresholdValue;
+                    }
+
+                    _alertRepository.Save(alert);
+                    _alertStore.Upsert(new AlertModel
+                    {
+                        UserId = alert.UserId,
+                        SymbolId = alert.SymbolId,
+                        LessValue = alert.LessValue,
+                        GreaterValue = alert.GreaterValue,
+                        LastAlertDate = alert.LastAlertDate
+                    });
+
+                    await ReplyAsync("Success!");
+                    
+                    break;
                 }
-                else
+                case "greater":
                 {
-                    alert.GreaterValue = thresholdValue;
+                    if (alert == null)
+                    {
+                        alert = new AlertEntity()
+                        {
+                            UserId = User.Id,
+                            SymbolId = symbolEntity.Id,
+                            GreaterValue = thresholdValue
+                        };
+                    }
+                    else
+                    {
+                        alert.GreaterValue = thresholdValue;
+                    }
+
+                    _alertRepository.Save(alert);
+                    _alertStore.Upsert(new AlertModel
+                    {
+                        UserId = alert.UserId,
+                        SymbolId = alert.SymbolId,
+                        LessValue = alert.LessValue,
+                        GreaterValue = alert.GreaterValue,
+                        LastAlertDate = alert.LastAlertDate
+                    });
+
+                    await ReplyAsync("Success!");
+                    
+                    break;
                 }
+                default:
+                    await ReplyAsync("Invalid arguments!");
 
-                _alertRepository.Save(alert);
-                _alertStore.Upsert(new AlertModel
-                {
-                    UserId = alert.UserId,
-                    SymbolId = alert.SymbolId,
-                    LessValue = alert.LessValue,
-                    GreaterValue = alert.GreaterValue,
-                    LastAlertDate = alert.LastAlertDate
-                });
-
-                await ReplyAsync("Success!");
-            }
-            else
-            {
-                await ReplyAsync("Invalid arguments!");
-
-                return;
+                    return;
             }
         }
 
@@ -213,7 +190,6 @@ namespace OK.Bitter.Api.Commands
             else
             {
                 var symbolEntity = _symbolRepository.Get(x => x.Name == symbol.ToUpperInvariant() || x.FriendlyName == symbol.ToUpperInvariant());
-
                 if (symbolEntity == null)
                 {
                     await ReplyAsync("Symbol is not found!");
@@ -222,7 +198,6 @@ namespace OK.Bitter.Api.Commands
                 }
 
                 var alert = _alertRepository.Get(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
-
                 if (alert == null)
                 {
                     await ReplyAsync("Alert is not found!");
@@ -242,6 +217,23 @@ namespace OK.Bitter.Api.Commands
                     await ReplyAsync("Success!");
                 }
             }
+        }
+
+        private string FormatAlert(SymbolEntity symbol, AlertEntity alert)
+        {
+            var result = $"{symbol.Base} when";
+
+            if (alert.LessValue.HasValue)
+            {
+                result += $" less than {alert.LessValue.Value} {symbol.Quote}";
+            }
+
+            if (alert.GreaterValue.HasValue)
+            {
+                result += $" greater than {alert.GreaterValue.Value} {symbol.Quote}";
+            }
+
+            return result;
         }
     }
 }

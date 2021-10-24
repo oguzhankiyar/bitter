@@ -25,7 +25,13 @@ namespace OK.Bitter.Api.Commands
         {
             if (key == "all")
             {
-                var settings = _settingRepository.GetList(x => x.UserId == User.Id);
+                var settings = _settingRepository.GetList(x => x.UserId == User.Id).OrderBy(x => x.Key);
+                if (!settings.Any())
+                {
+                    await ReplyAsync("There are no settings!");
+
+                    return;
+                }
 
                 var lines = new List<string>();
 
@@ -34,18 +40,7 @@ namespace OK.Bitter.Api.Commands
                     lines.Add($"{item.Key} = {item.Value}");
                 }
 
-                if (!lines.Any())
-                {
-                    await ReplyAsync("There are no settings!");
-
-                    return;
-                }
-
-                lines = lines.OrderBy(x => x).ToList();
-
                 await ReplyPaginatedAsync(lines);
-
-                return;
             }
             else
             {

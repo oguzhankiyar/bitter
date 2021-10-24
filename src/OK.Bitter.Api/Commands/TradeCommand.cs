@@ -29,27 +29,24 @@ namespace OK.Bitter.Api.Commands
         {
             if (symbol == "all")
             {
-                var trades = _tradeRepository.GetList(x => x.UserId == User.Id);
-
-                var lines = new List<string>();
-
-                foreach (var item in trades)
-                {
-                    var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
-
-                    var line = $"{item.Time.ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()} #{item.Ticket}]";
-
-                    lines.Add(line);
-                }
-
-                if (!lines.Any())
+                var trades = _tradeRepository.GetList(x => x.UserId == User.Id).OrderBy(x => x.CreatedDate);
+                if (!trades.Any())
                 {
                     await ReplyAsync("There are no trades!");
 
                     return;
                 }
 
-                lines = lines.OrderBy(x => x).ToList();
+                var lines = new List<string>();
+
+                foreach (var item in trades)
+                {
+                    var symbolEntity = _symbolRepository.Get(x => x.Id == item.SymbolId);
+
+                    var line = $"{item.Time:dd.MM.yyyy HH:mm:ss} | {symbolEntity.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()} #{item.Ticket}]";
+
+                    lines.Add(line);
+                }
 
                 await ReplyPaginatedAsync(lines);
             }
@@ -63,27 +60,22 @@ namespace OK.Bitter.Api.Commands
                     return;
                 }
 
-                var trades = _tradeRepository.GetList(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id);
-
-                var lines = new List<string>();
-
-                foreach (var item in trades)
-                {
-                    var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
-
-                    var line = $"{item.Time.AddHours(3).ToString("dd.MM.yyyy HH:mm:ss")} | {sym.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()} #{item.Ticket}]";
-
-                    lines.Add(line);
-                }
-
-                if (!lines.Any())
+                var trades = _tradeRepository.GetList(x => x.UserId == User.Id && x.SymbolId == symbolEntity.Id).OrderBy(x => x.CreatedDate);
+                if (!trades.Any())
                 {
                     await ReplyAsync("There are no trades!");
 
                     return;
                 }
 
-                lines = lines.OrderBy(x => x).ToList();
+                var lines = new List<string>();
+
+                foreach (var item in trades)
+                {
+                    var line = $"{item.Time:dd.MM.yyyy HH:mm:ss} | {symbolEntity.FriendlyName}: {item.Volume} x {item.Price} [{item.Type.ToString().ToUpperInvariant()} #{item.Ticket}]";
+
+                    lines.Add(line);
+                }
 
                 await ReplyPaginatedAsync(lines);
             }

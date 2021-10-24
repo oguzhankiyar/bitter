@@ -34,28 +34,25 @@ namespace OK.Bitter.Api.Commands
             if (symbol == "all")
             {
                 var subscriptions = _subscriptionRepository.GetList(x => x.UserId == User.Id);
-
-                var lines = new List<string>();
-
-                foreach (var item in subscriptions)
-                {
-                    var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
-
-                    lines.Add($"{sym.FriendlyName} for minimum {(item.MinimumChange * 100).ToString("0.00")}% change");
-                }
-
-                if (!lines.Any())
+                if (!subscriptions.Any())
                 {
                     await ReplyAsync("There are no subscriptions!");
 
                     return;
                 }
 
+                var lines = new List<string>();
+
+                foreach (var item in subscriptions)
+                {
+                    var symbolEntity = _symbolRepository.Get(x => x.Id == item.SymbolId);
+
+                    lines.Add($"{symbolEntity.FriendlyName} for minimum {(item.MinimumChange * 100):0.00}% change");
+                }
+
                 lines = lines.OrderBy(x => x).ToList();
 
                 await ReplyPaginatedAsync(lines);
-
-                return;
             }
             else
             {

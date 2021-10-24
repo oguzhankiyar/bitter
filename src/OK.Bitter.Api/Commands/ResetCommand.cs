@@ -30,8 +30,6 @@ namespace OK.Bitter.Api.Commands
                 _socketServiceManager.ResetCache(User.Id);
 
                 await ReplyAsync("Success!");
-
-                return;
             }
             else
             {

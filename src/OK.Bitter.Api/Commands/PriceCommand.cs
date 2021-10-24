@@ -70,24 +70,24 @@ namespace OK.Bitter.Api.Commands
 
                 prices = _priceRepository.GetList(x => x.SymbolId == symbolEntity.Id && x.Date >= startDate).OrderBy(x => x.Date);
             }
-
-            var lines = new List<string>();
-
-            foreach (var item in prices)
-            {
-                var sym = _symbolRepository.Get(x => x.Id == item.SymbolId);
-
-                lines.Add($"{item.Date:dd.MM.yyyy HH:mm:ss} | {sym.Base}: {item.Price:0.00######} {sym.Quote} {string.Format("[{0}% {1}]", (item.Change * 100).ToString("+0.00;-0.00;0"), (DateTime.UtcNow - item.LastChangeDate).ToIntervalString())}");
-            }
-
-            if (!lines.Any())
+            
+            if (!prices.Any())
             {
                 await ReplyAsync("There are no prices!");
 
                 return;
             }
 
-            lines = lines.OrderBy(x => x).ToList();
+            var lines = new List<string>();
+
+            foreach (var item in prices)
+            {
+                var symbolEntity = _symbolRepository.Get(x => x.Id == item.SymbolId);
+                var changeValue = (item.Change * 100).ToString("+0.00;-0.00;0");
+                var changeInterval = (DateTime.UtcNow - item.LastChangeDate).ToIntervalString();
+                
+                lines.Add($"{item.Date:dd.MM.yyyy HH:mm:ss} | {symbolEntity.Base}: {item.Price:0.00######} {symbolEntity.Quote} [{changeValue}% {changeInterval}]");
+            }
 
             await ReplyPaginatedAsync(lines);
         }
