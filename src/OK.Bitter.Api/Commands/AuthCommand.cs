@@ -85,7 +85,7 @@ namespace OK.Bitter.Api.Commands
             var inputBytes = Encoding.ASCII.GetBytes(key);
             var hashBytes = md5.ComputeHash(inputBytes);
 
-            return hashBytes.Select(x => x.ToString("x2")).ToString();
+            return string.Join("", hashBytes.Select(x => x.ToString("x2")));
         }
     }
 }
