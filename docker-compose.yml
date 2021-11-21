@@ -1,13 +1,19 @@
 version: '3.5'
 
 services:
-  io_kiyar_bitter:
-    image: io_kiyar_bitter
-    container_name: io_kiyar_bitter
+  bitter:
+    image: ${DOCKER_PATH}/api:${APP_VERSION}
+    container_name: ${APP_HOST}
     restart: always
     build: .
     ports:
-      - '3010:80'
+      - '${APP_PORT}:80'
+    environment:
+      - ASPNETCORE_ENVIRONMENT=$APP_ENVIRONMENT
+      - DATAACCESS__CONNECTIONSTRING=$CONNECTION_STRING
+      - DATAACCESS__DATABASENAME=$DATABASE_NAME
+      - TELEGRAM__BOTTOKEN=$BOT_TOKEN
+      - PASSWORDS__Admin=$ADMIN_PASSWORD
     networks:
       - nginx
 
